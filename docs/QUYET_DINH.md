@@ -154,3 +154,81 @@ và **đã có** ràng buộc `ma` không được có định dạng UUID như 
 - Mật khẩu tài khoản demo được băm bcrypt; danh sách tài khoản demo ghi trong `README.md` (chỉ dev).
 - `ma_bam_sha256`, `token_xac_thuc`, `ma_bam`/`ma_chu_ky` của dữ liệu demo là giá trị tạm,
   **không dùng ở production** — Giai đoạn 4/5 sẽ sinh giá trị thật.
+
+---
+
+## Nhóm D — Quyết định khi hiện thực backend (Giai đoạn 3, đã chốt)
+
+### D1. `Idempotency-Key` bắt buộc cho thao tác ghi
+
+- Bắt buộc với `POST`, `PUT`, `PATCH` nghiệp vụ (kể cả `POST /catalog/*`).
+- **Không** bắt buộc với `DELETE` (vốn đã idempotent: gọi lần hai → `NOT_FOUND`).
+- Thiếu tiêu đề → `VALIDATION_ERROR` (422), `details.truongThieu = ['idempotency-key']`.
+- Khóa lưu **24 giờ**; gửi lại y hệt (cùng khóa + cùng nội dung) → trả lại nguyên kết quả cũ kèm
+  tiêu đề `idempotency-replayed: true`. Cùng khóa nhưng **khác nội dung/đường dẫn** →
+  `DUPLICATE_ACTION` (409).
+- Khi lỗi nghiệp vụ (ngoài 2xx), chỗ giữ khóa được **nhả** để lần gửi sau được xử lý lại.
+
+**Danh sách chính xác các endpoint bắt buộc khóa** (nhóm `idempotent()` trong mã):
+
+| Nhóm | Endpoint |
+| --- | --- |
+| Hồ sơ | `POST /applications`, `PUT /applications/{ma}`, `POST /applications/{ma}/submit`, `POST /applications/{ma}/cancel`, `POST /applications/{ma}/supplement` |
+| Phê duyệt | `POST /approvals/batch`, `POST /approvals/{ma}/approve`, `POST /approvals/{ma}/reject`, `POST /approvals/{ma}/request-supplement` |
+| Văn bản | `POST /documents/{id}/revoke` |
+| Danh mục | `POST /catalog/*`, `PATCH /catalog/*/{ma}` |
+
+**Cố ý KHÔNG bắt buộc khóa** (đã idempotent tự nhiên hoặc không phải thao tác nghiệp vụ):
+`/auth/*`, `POST /otp/send`, `POST /otp/:id/resend`, `POST /notifications/{id}/read`,
+`POST /notifications/read-all`, `POST /library/{id}/download`,
+`POST /documents/{id}/download-log`, `POST /public/verify/token/{token}/compare`
+(điểm công khai, không có phiên đăng nhập → không thể gắn khóa theo người dùng).
+Tiêu đề `Idempotency-Key` gửi tới các endpoint này **được bỏ qua an toàn**.
+
+
+### D2. Che PII cả trong phần chữ của văn bản
+
+A3 yêu cầu phản hồi công khai không chứa họ tên/MSSV đầy đủ. Vì `trichYeu`/`noiDung` của văn bản
+có thể chèn họ tên và MSSV, API công khai **thay thế ngay trong chuỗi** bằng dạng đã che
+(`scrubText` trong `src/lib/mask.ts`), không chỉ che ở trường `sinhVien`.
+
+### D3. Bộ đếm OTP ghi ngoài transaction nghiệp vụ
+
+Lượt nhập sai OTP được ghi bằng kết nối riêng (không nằm trong transaction phê duyệt). Nếu ghi
+trong transaction, lỗi `OTP_INVALID` sẽ rollback và bộ đếm **không bao giờ tăng** → mất tác dụng
+chống dò mã. Đây là sửa lỗi phát hiện qua ca kiểm thử OTP.
+
+### D4. `maHoSo` sinh ngay khi tạo nháp
+
+`Application.maHoSo` **luôn** có giá trị, sinh ở bước tạo bản nháp bằng `next_ma_ho_so()`
+(không đợi tới lúc nộp). Bản nháp có tiêu thụ số thứ tự.
+
+### D5. `devOtp` chỉ ngoài production
+
+`POST /otp/send` và `POST /otp/:id/resend` trả thêm `devOtp` **chỉ khi `NODE_ENV !== 'production'`**.
+DB chỉ lưu băm OTP. Không bao giờ trả `devOtp` ở production.
+
+### D6. Đăng nhập không phân biệt hoa/thường với mã số
+
+`POST /auth/login` so khớp `maSo` **không phân biệt hoa thường** (`CV001` = `cv001`), giống cách xử
+lý với `email`. Mã số vẫn duy nhất nên không có khả năng nhập nhằng.
+
+### D7. "Chiếm" bước phê duyệt nguyên tử
+
+`ALREADY_PROCESSED` được hiện thực bằng `updateMany` có điều kiện (`trangThai IN (PENDING,
+IN_PROGRESS)`) ngay trong transaction: nếu người khác vừa xử lý, số bản ghi khớp = 0 → 409.
+Kiểm tra "bước đã xử lý" được ưu tiên **trước** kiểm tra vai trò để trả đúng mã lỗi.
+
+### D8. Lọc hộp thư chờ duyệt bằng bộ nhớ
+
+Điều kiện `step_instances.step_order = applications.current_step_order` không biểu diễn được bằng
+Prisma, nên `/approvals/pending` lọc **trong bộ nhớ** sau khi truy vấn theo phạm vi. Chấp nhận được
+ở quy mô hiện tại; khi lớn cần thêm cột `current_step_role` (TODO).
+
+### D9. Phạm vi hiện thực Giai đoạn 3
+
+Đã hiện thực **83/112** thao tác trong `docs/openapi.yaml`. 29 thao tác **hoãn sang Giai đoạn 3b/5/6/7**:
+quản lý `templates`, `delegations`, tạo/sửa/xoá `request-types`, `workflows`, `users` (gồm
+`reset-password`), `documents/{id}/export`, `documents/report*`, `files/{fileToken}`,
+`notifications/stream`, `chat/*`.
+

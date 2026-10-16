@@ -12,6 +12,8 @@ PostgreSQL, dịch vụ trợ lý ảo RAG và triển khai bằng Docker.
 motcua-opencode/
 ├─ frontend/          # Ứng dụng React + Vite + TypeScript (đang chạy được ở chế độ mock)
 ├─ backend/           # API Node + Express + Prisma (PostgreSQL)
+│  ├─ src/             # mã nguồn API (Express + Zod + RBAC)
+│  ├─ tests/           # kiểm thử vitest + supertest (50 ca)
 │  ├─ prisma/
 │  │  ├─ schema.prisma      # lược đồ CSDL (UUID, snake_case, xóa mềm)
 │  │  ├─ migrations/        # migration SQL (khởi tạo + quy tắc nghiệp vụ)
@@ -29,12 +31,14 @@ Tài liệu quan trọng:
 
 | Tệp | Nội dung |
 | --- | --- |
-| [docs/QUYET_DINH.md](docs/QUYET_DINH.md) | Toàn bộ quyết định thiết kế đã chốt (nhóm A + nhóm B) |
+| [docs/QUYET_DINH.md](docs/QUYET_DINH.md) | Toàn bộ quyết định thiết kế đã chốt (nhóm A, B, C, D) |
 | [docs/openapi.yaml](docs/openapi.yaml) | Đặc tả OpenAPI 3.1 đầy đủ (nguồn sự thật của API) |
 | [docs/erd.md](docs/erd.md) | Sơ đồ quan hệ thực thể (Mermaid) |
 | [docs/FRONTEND_CONTRACT.md](docs/FRONTEND_CONTRACT.md) | Hợp đồng frontend ↔ backend |
+| [docs/QUY_TRINH_VAN_HANH.md](docs/QUY_TRINH_VAN_HANH.md) | Quy trình vận hành (di trú, dữ liệu demo) |
 | [docs/PHASE1-REPORT.md](docs/PHASE1-REPORT.md) | Báo cáo Giai đoạn 1 (OpenAPI) |
 | [docs/PHASE2-REPORT.md](docs/PHASE2-REPORT.md) | Báo cáo Giai đoạn 2 (CSDL + seed) |
+| [docs/PHASE3-REPORT.md](docs/PHASE3-REPORT.md) | Báo cáo Giai đoạn 3 (API + RBAC + kiểm thử) |
 
 ## Yêu cầu hệ thống
 
@@ -56,9 +60,18 @@ docker compose up -d postgres      # PostgreSQL 16, cổng 5433 (tránh đụng 
 cd backend
 cp .env.example .env               # đổi JWT_SECRET trước khi triển khai thật
 npm install
-npx prisma migrate deploy          # tạo bảng
+npm run generate                   # prisma generate
+npm run migrate:deploy             # tạo bảng
 npm run seed                       # nạp dữ liệu thật từ mock
+npm run dev                        # API tại http://localhost:8080/api/v1
 npm run studio                     # (tùy chọn) xem dữ liệu
+```
+
+Kiểm tra chất lượng backend:
+
+```bash
+npm run typecheck                  # tsc --noEmit
+npm test                           # vitest run → 6 tệp, 50 ca
 ```
 
 ### 3. Frontend
@@ -70,7 +83,8 @@ npm run dev                        # http://localhost:5173 (mặc định dùng 
 ```
 
 Để frontend gọi backend thật, đặt trong `frontend/.env`: `VITE_USE_MOCK=false` và
-`VITE_API_URL=http://localhost:8080/api/v1` (backend API sẽ có ở Giai đoạn 3).
+`VITE_API_URL=http://localhost:8080/api/v1`. Việc nối thật sẽ hoàn tất ở **Giai đoạn 8**
+(hiện tầng đọc đã khớp hợp đồng; xem mục 8 của `docs/PHASE3-REPORT.md`).
 
 ## Tài khoản demo
 
@@ -84,6 +98,8 @@ Mật khẩu chung: `demo1234`
 | Phòng Đào tạo | `PDT001` | Phạm Thu Hà |
 | Quản trị | `ADMIN` | Quản trị hệ thống |
 
+> Đăng nhập không phân biệt hoa/thường với mã số (`cv001` = `CV001`). Xem `docs/QUYET_DINH.md` (D6).
+
 ## Tiến độ
 
 | Giai đoạn | Nội dung | Trạng thái |
@@ -91,8 +107,8 @@ Mật khẩu chung: `demo1234`
 | 0 | Khảo sát, chốt kiến trúc, 3 quyết định A | ✅ |
 | 1 | Đặc tả OpenAPI 3.1 | ✅ |
 | 2 | PostgreSQL + Prisma + ERD + seed + docker-compose | ✅ |
-| 3 | API Node/Express + Zod + RBAC + xác thực | ⏳ |
-| 4 | Máy trạng thái + OTP + chống trùng | ⏳ |
+| 3 | API Node/Express + Zod + RBAC + xác thực | ✅ |
+| 4 | Máy trạng thái + OTP + chống trùng | 🟡 (lõi đã làm trong Giai đoạn 3) |
 | 5 | Phát hành PDF + QR + tra cứu công khai | ⏳ |
 | 6 | Hàng đợi pg-boss + thông báo + báo cáo | ⏳ |
 | 7 | Trợ lý ảo RAG (FastAPI + ChromaDB) | ⏳ |

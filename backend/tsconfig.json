@@ -11,5 +11,5 @@
     "forceConsistentCasingInFileNames": true,
     "noEmit": true
   },
-  "include": ["prisma/**/*.ts", "src/**/*.ts"]
+  "include": ["prisma/**/*.ts", "src/**/*.ts", "tests/**/*.ts", "vitest.config.ts"]
 }
