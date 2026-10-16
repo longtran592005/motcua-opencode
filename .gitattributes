@@ -1,0 +1,18 @@
+# Chuẩn hoá xuống dòng: lưu LF trong kho, tránh nhiễu CRLF/LF giữa Windows và Linux (Docker).
+* text=auto eol=lf
+
+# Tệp nhị phân — không đổi xuống dòng
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.doc binary
+*.xlsx binary
+*.xls binary
+*.zip binary
+
+# Lockfile do công cụ sinh — không hợp nhất dòng
+package-lock.json -diff
