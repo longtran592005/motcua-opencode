@@ -1,0 +1,33 @@
+{
+  "name": "motcua-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Backend Cổng Một cửa điện tử Trường Đại học Thái Bình",
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:diff": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script",
+    "seed": "prisma db seed",
+    "demo:purge": "prisma db execute --file prisma/purge-demo.sql --schema prisma/schema.prisma",
+    "reset": "prisma migrate reset --force",
+    "studio": "prisma studio",
+    "validate": "prisma validate",
+    "format": "prisma format"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.7.0",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.10.0",
+    "prisma": "^6.7.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

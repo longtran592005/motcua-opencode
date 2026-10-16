@@ -1,0 +1,36 @@
+# Docker Compose — Cổng Một cửa điện tử Trường Đại học Thái Bình
+#
+# GIAI ĐOẠN 2: chỉ dựng PostgreSQL để chạy Prisma migrate/seed.
+# Các service backend / worker / rag / frontend sẽ được thêm ở Giai đoạn 9.
+#
+#   docker compose up -d postgres
+#   cd backend && npm run migrate && npm run seed
+#
+# Dữ liệu được lưu trong volume `motcua_pgdata` nên không mất khi tắt máy.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: motcua-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: motcua
+      POSTGRES_PASSWORD: motcua
+      POSTGRES_DB: motcua
+      # Sắp xếp và mã hóa phù hợp tiếng Việt
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      # Cổng 5432 trên máy này đã bị PostgreSQL cục bộ chiếm; dùng 5433 để tránh đụng.
+      - "5433:5432"
+    volumes:
+      - motcua_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U motcua -d motcua"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  motcua_pgdata:
+    name: motcua_pgdata

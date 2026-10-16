@@ -1,0 +1,858 @@
+// Prisma schema â€” Cá»•ng Má»™t cá»­a Ä‘iá»‡n tá»­ TrÆ°á»ng Äáº¡i há»c ThĂ¡i BĂ¬nh
+// Quy Æ°á»›c: tĂªn model PascalCase sá»‘ nhiá»u @@map("snake_case"); field camelCase @map("snake_case").
+// KhĂ³a chĂ­nh/khĂ³a ngoáº¡i: UUID. MĂ£ nghiá»‡p vá»¥ (ma/maSo/maHoSo) lĂ  Ä‘á»‹nh danh cĂ´ng khai.
+// Xem docs/QUYET_DINH.md vĂ  docs/openapi.yaml.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// ENUM (giĂ¡ trá»‹ khá»›p 100% frontend â€” khĂ´ng Ä‘á»•i tĂªn)
+// ---------------------------------------------------------------------------
+
+enum Role {
+  SINH_VIEN
+  CO_VAN
+  TRUONG_KHOA
+  PHONG_DAO_TAO
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  LOCKED
+}
+
+enum Gender {
+  NAM
+  NU
+  KHAC
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_APPROVAL
+  NEED_SUPPLEMENT
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+// Cháº¿ Ä‘á»™ duyá»‡t cá»§a má»™t bÆ°á»›c. Khá»›p frontend ApprovalMode.
+enum ApprovalMode {
+  ONE_CLICK
+  OTP
+}
+
+enum StepStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  SKIPPED
+}
+
+enum DocumentStatus {
+  VALID
+  REVOKED
+  INVALID
+}
+
+enum SignatureMethod {
+  OTP
+  ELECTRONIC
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  DANGER
+}
+
+enum FieldType {
+  text
+  textarea
+  number
+  date
+  select
+  radio
+  checkbox
+  email
+  phone
+  upload
+}
+
+enum ApprovalActionType {
+  SUBMIT
+  APPROVE
+  REJECT
+  REQUEST_SUPPLEMENT
+  SUPPLEMENT
+  CANCEL
+  ISSUE_DOCUMENT
+  REVOKE_DOCUMENT
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+// ---------------------------------------------------------------------------
+// Tá»” CHá»¨C (danh má»¥c chuáº©n hĂ³a)
+// ---------------------------------------------------------------------------
+
+model Faculty {
+  id           String    @id @default(uuid()) @db.Uuid
+  ma           String    @unique @map("ma")
+  ten          String    @map("ten")
+  vietTat      String    @map("viet_tat")
+  truongKhoaId String?   @map("truong_khoa_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  truongKhoa      User?         @relation("FacultyHead", fields: [truongKhoaId], references: [id])
+  majors          Major[]
+  classes         Class[]
+  users           User[]        @relation("UserFaculty")
+  staffPositions  StaffPosition[]
+  applications    Application[] @relation("ApplicationFaculty")
+
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("faculties")
+}
+
+model Department {
+  id             String    @id @default(uuid()) @db.Uuid
+  ma             String    @unique @map("ma")
+  ten            String    @map("ten")
+  vietTat        String    @map("viet_tat")
+  truongPhongId  String?   @map("truong_phong_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  truongPhong User[] @relation("DepartmentHead")
+  users       User[] @relation("UserDepartment")
+
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("departments")
+}
+
+model AcademicYear {
+  id          String    @id @default(uuid()) @db.Uuid
+  ma          String    @unique @map("ma")
+  ten         String    @map("ten")
+  namBatDau   Int       @map("nam_bat_dau")
+  namKetThuc  Int       @map("nam_ket_thuc")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  majors  MajorAcademicYear[]
+  classes Class[]
+
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("academic_years")
+}
+
+model Major {
+  id           String    @id @default(uuid()) @db.Uuid
+  ma           String    @unique @map("ma")
+  maChinhThuc  String?   @unique @map("ma_chinh_thuc")
+  ten          String    @map("ten")
+  facultyId    String    @map("faculty_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  faculty      Faculty             @relation(fields: [facultyId], references: [id])
+  academicYears MajorAcademicYear[]
+  classes      Class[]
+
+  @@index([facultyId])
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("majors")
+}
+
+model MajorAcademicYear {
+  majorId        String @map("major_id") @db.Uuid
+  academicYearId String @map("academic_year_id") @db.Uuid
+
+  major        Major        @relation(fields: [majorId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@id([majorId, academicYearId])
+  @@map("major_academic_years")
+}
+
+model StaffPosition {
+  id          String    @id @default(uuid()) @db.Uuid
+  ma          String    @unique @map("ma")
+  ten         String    @map("ten")
+  moTa        String?   @map("mo_ta")
+  facultyId   String?   @map("faculty_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  faculty Faculty? @relation(fields: [facultyId], references: [id])
+  users   User[]
+
+  @@index([facultyId])
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("staff_positions")
+}
+
+model Class {
+  id             String    @id @default(uuid()) @db.Uuid
+  ma             String    @unique @map("ma")
+  ten            String    @map("ten")
+  facultyId      String    @map("faculty_id") @db.Uuid
+  majorId        String    @map("major_id") @db.Uuid
+  academicYearId String    @map("academic_year_id") @db.Uuid
+  coVanId        String?   @map("co_van_id") @db.Uuid
+  siSo           Int       @default(0) @map("si_so")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  faculty      Faculty      @relation(fields: [facultyId], references: [id])
+  major        Major        @relation(fields: [majorId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  coVan        User?        @relation("ClassAdvisor", fields: [coVanId], references: [id])
+  students     Student[]
+  applications Application[] @relation("ApplicationClass")
+
+  @@index([facultyId])
+  @@index([majorId])
+  @@index([coVanId])
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("classes")
+}
+
+model User {
+  id              String        @id @default(uuid()) @db.Uuid
+  maSo            String        @unique @map("ma_so")
+  hoTen           String        @map("ho_ten")
+  email           String        @unique @map("email")
+  passwordHash    String        @map("password_hash")
+  role            Role          @map("role")
+  avatarUrl       String?       @map("avatar_url")
+  soDienThoai     String?       @map("so_dien_thoai")
+  ngaySinh        DateTime?     @map("ngay_sinh") @db.Date
+  gioiTinh        Gender?       @map("gioi_tinh")
+  chucVu          String?       @map("chuc_vu")
+  trangThai       UserStatus    @default(ACTIVE) @map("trang_thai")
+  facultyId       String?       @map("faculty_id") @db.Uuid
+  departmentId    String?       @map("department_id") @db.Uuid
+  staffPositionId String?       @map("staff_position_id") @db.Uuid
+  lastLoginAt     DateTime?     @map("last_login_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+
+  faculty              Faculty?           @relation("UserFaculty", fields: [facultyId], references: [id])
+  department           Department?        @relation("UserDepartment", fields: [departmentId], references: [id])
+  staffPosition        StaffPosition?     @relation(fields: [staffPositionId], references: [id])
+  advisedClasses       Class[]            @relation("ClassAdvisor")
+  headOfFaculties      Faculty[]          @relation("FacultyHead")
+  headOfDepartments    Department[]       @relation("DepartmentHead")
+  studentProfile       Student?
+  applications         Application[]      @relation("ApplicationApplicant")
+  stepInstances        StepInstance[]     @relation("StepAssignee")
+  approvals            Approval[]         @relation("ApprovalActor")
+  signatures           Signature[]        @relation("SignatureSigner")
+  otpChallenges        OtpChallenge[]
+  notifications        Notification[]
+  delegationsGiven     Delegation[]       @relation("DelegationFrom")
+  delegationsReceived  Delegation[]       @relation("DelegationTo")
+  refreshTokens        RefreshToken[]
+  auditLogs            AuditLog[]
+  chatSessions         ChatSession[]
+  idempotencyKeys      IdempotencyKey[]
+  downloads            DocumentDownload[] @relation("DownloadUser")
+
+  @@index([role])
+  @@index([facultyId])
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("users")
+}
+
+model Student {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @unique @map("user_id") @db.Uuid
+  classId        String    @map("class_id") @db.Uuid
+  enrollmentYear Int?      @map("enrollment_year")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  class Class @relation(fields: [classId], references: [id])
+
+  @@index([classId])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("students")
+}
+
+// ---------------------------------------------------------------------------
+// LOáº I ÄÆ N & LUá»’NG DUYá»†T
+// ---------------------------------------------------------------------------
+
+model RequestType {
+  id          String    @id @default(uuid()) @db.Uuid
+  ma          String    @unique @map("ma") // giĂ¡ trá»‹ mock cÅ©: rt_gxn, rt_dbt...
+  ten         String    @map("ten")
+  nhom        String    @map("nhom")
+  moTa        String    @map("mo_ta")
+  icon        String    @map("icon")
+  mau         String    @map("mau")
+  workflowId  String?   @map("workflow_id") @db.Uuid
+  templateId  String?   @map("template_id") @db.Uuid
+  soNgayXuLy  Int       @default(3) @map("so_ngay_xu_ly")
+  lePhi       Int       @default(0) @map("le_phi")
+  hoatDong    Boolean   @default(true) @map("hoat_dong")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  workflow        Workflow?             @relation(fields: [workflowId], references: [id])
+  template        DocumentTemplate?     @relation(fields: [templateId], references: [id])
+  formFields      RequestTypeField[]
+  requiredDocs    RequiredDocument[]
+  applications    Application[]
+
+  @@index([workflowId])
+  @@index([templateId])
+  @@index([hoatDong])
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("request_types")
+}
+
+model RequestTypeField {
+  id           String    @id @default(uuid()) @db.Uuid
+  requestTypeId String   @map("request_type_id") @db.Uuid
+  key          String    @map("key")
+  label        String    @map("label")
+  type         FieldType @map("type")
+  placeholder  String?   @map("placeholder")
+  helpText     String?   @map("help_text")
+  required     Boolean   @default(false) @map("required")
+  options      Json?     @map("options")
+  defaultValue Json?     @map("default_value")
+  min          Float?    @map("min")
+  max          Float?    @map("max")
+  rows         Int?      @map("rows")
+  accept       String?   @map("accept")
+  maxSizeMb    Float?    @map("max_size_mb")
+  width        String?   @map("width")
+  order        Int       @map("order")
+  readOnly     Boolean   @default(false) @map("read_only")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  requestType RequestType @relation(fields: [requestTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([requestTypeId, key])
+  @@index([requestTypeId])
+  @@map("request_type_fields")
+}
+
+model RequiredDocument {
+  id            String   @id @default(uuid()) @db.Uuid
+  requestTypeId String   @map("request_type_id") @db.Uuid
+  key           String   @map("key")
+  label         String   @map("label")
+  batBuoc       Boolean  @default(true) @map("bat_buoc")
+  accept        String?  @map("accept")
+  helpText      String?  @map("help_text")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  requestType RequestType @relation(fields: [requestTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([requestTypeId, key])
+  @@index([requestTypeId])
+  @@map("required_documents")
+}
+
+model Workflow {
+  id        String    @id @default(uuid()) @db.Uuid
+  ma        String    @map("ma") // WF-01...
+  ten       String    @map("ten")
+  version   Int       @default(1) @map("version")
+  capDo     Int       @default(1) @map("cap_do")
+  hoatDong  Boolean   @default(true) @map("hoat_dong")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  steps        WorkflowStep[]
+  requestTypes RequestType[]
+  applications Application[]
+
+  @@unique([ma, version])
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("workflow_definitions")
+}
+
+model WorkflowStep {
+  id              String       @id @default(uuid()) @db.Uuid
+  workflowId      String       @map("workflow_id") @db.Uuid
+  order           Int          @map("order")
+  ten             String       @map("ten")
+  role            Role         @map("role")
+  mode            ApprovalMode @map("mode")
+  slaHours        Int          @default(48) @map("sla_hours")
+  allowReject     Boolean      @default(true) @map("allow_reject")
+  allowSupplement Boolean      @default(true) @map("allow_supplement")
+  moTa            String?      @map("mo_ta")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  workflow     Workflow       @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  stepInstances StepInstance[]
+
+  @@unique([workflowId, order])
+  @@index([workflowId])
+  @@map("workflow_steps")
+}
+
+// ---------------------------------------------------------------------------
+// Há»’ SÆ  Má»˜T Cá»¬A
+// ---------------------------------------------------------------------------
+
+model Application {
+  id              String            @id @default(uuid()) @db.Uuid
+  maHoSo          String            @unique @map("ma_ho_so") // MC-YYYY-NNNNNN
+  requestTypeId   String            @map("request_type_id") @db.Uuid
+  applicantId     String            @map("applicant_id") @db.Uuid
+  facultyId       String?           @map("faculty_id") @db.Uuid
+  classId         String?           @map("class_id") @db.Uuid
+  trangThai       ApplicationStatus @default(DRAFT) @map("trang_thai")
+  duLieu          Json              @default("{}") @map("du_lieu") // snapshot dá»¯ liá»‡u biá»ƒu máº«u
+  workflowId      String?           @map("workflow_id") @db.Uuid
+  workflowVersion Int?              @map("workflow_version")
+  currentStepOrder Int              @default(0) @map("current_step_order")
+  tongSoBuoc      Int               @default(0) @map("tong_so_buoc")
+  buocDaDuyet     Int               @default(0) @map("buoc_da_duyet")
+  hanXuLy         DateTime?         @map("han_xu_ly")
+  ngayNop         DateTime?         @map("ngay_nop")
+  ngayHoanThanh   DateTime?         @map("ngay_hoan_thanh")
+  lyDoTuChoi      String?           @map("ly_do_tu_choi")
+  yeuCauBoSung    Json?             @map("yeu_cau_bo_sung")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  deletedAt       DateTime?         @map("deleted_at")
+
+  requestType  RequestType    @relation(fields: [requestTypeId], references: [id])
+  applicant    User           @relation("ApplicationApplicant", fields: [applicantId], references: [id])
+  faculty      Faculty?       @relation("ApplicationFaculty", fields: [facultyId], references: [id])
+  class        Class?         @relation("ApplicationClass", fields: [classId], references: [id])
+  workflow     Workflow?      @relation(fields: [workflowId], references: [id])
+  document     SignedDocument?
+  attachments  ApplicationAttachment[]
+  stepInstances StepInstance[]
+  approvals    Approval[]
+  signatures   Signature[]
+  otpChallenges OtpChallenge[]
+
+  @@index([applicantId, trangThai])
+  @@index([trangThai, hanXuLy]) // há»™p thÆ° / cáº£nh bĂ¡o quĂ¡ háº¡n
+  @@index([requestTypeId])
+  @@index([facultyId])
+  @@index([createdAt])
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("applications")
+}
+
+model ApplicationAttachment {
+  id             String   @id @default(uuid()) @db.Uuid
+  applicationId  String   @map("application_id") @db.Uuid
+  ten            String   @map("ten")
+  loai           String   @map("loai") // MIME
+  kichThuoc      Int      @map("kich_thuoc")
+  storageKey     String   @map("storage_key")
+  requirementKey String?  @map("requirement_key")
+  nguoiTaiLenId  String?  @map("nguoi_tai_len_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("application_attachments")
+}
+
+model StepInstance {
+  id            String     @id @default(uuid()) @db.Uuid
+  applicationId String     @map("application_id") @db.Uuid
+  workflowStepId String?   @map("workflow_step_id") @db.Uuid
+  stepOrder     Int        @map("step_order")
+  ten           String     @map("ten")
+  role          Role       @map("role")
+  mode          ApprovalMode @map("mode")
+  trangThai     StepStatus @default(PENDING) @map("trang_thai")
+  assigneeId    String?    @map("assignee_id") @db.Uuid
+  slaDueAt      DateTime?  @map("sla_due_at")
+  startedAt     DateTime?  @map("started_at")
+  completedAt   DateTime?  @map("completed_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  application  Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  workflowStep WorkflowStep? @relation(fields: [workflowStepId], references: [id])
+  assignee     User?         @relation("StepAssignee", fields: [assigneeId], references: [id])
+  approvals    Approval[]
+
+  @@unique([applicationId, stepOrder])
+  @@index([role, trangThai]) // há»™p thÆ° theo vai trĂ²
+  @@index([assigneeId, trangThai])
+  @@map("step_instances")
+}
+
+model Approval {
+  id             String             @id @default(uuid()) @db.Uuid
+  applicationId  String             @map("application_id") @db.Uuid
+  stepInstanceId String?            @map("step_instance_id") @db.Uuid
+  buocOrder      Int                @map("buoc_order") // 0 = do sinh viĂªn
+  hanhDong       ApprovalActionType @map("hanh_dong")
+  actorId        String?            @map("actor_id") @db.Uuid
+  vaiTro         Role               @map("vai_tro")
+  chucVu         String?            @map("chuc_vu")
+  ghiChu         String?            @map("ghi_chu")
+  lyDo           String?            @map("ly_do")
+  phuongThuc     ApprovalMode?      @map("phuong_thuc")
+  signatureId    String?            @map("signature_id") @db.Uuid
+  idempotencyKey String?            @map("idempotency_key")
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  application  Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  stepInstance StepInstance? @relation(fields: [stepInstanceId], references: [id])
+  actor        User?         @relation("ApprovalActor", fields: [actorId], references: [id])
+
+  @@index([applicationId, createdAt])
+  @@index([actorId])
+  @@map("approvals")
+}
+
+model IdempotencyKey {
+  id             String   @id @default(uuid()) @db.Uuid
+  key            String   @map("key")
+  userId         String   @map("user_id") @db.Uuid
+  endpoint       String   @map("endpoint")
+  requestHash    String   @map("request_hash")
+  responseStatus Int      @map("response_status")
+  responseBody   Json     @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at")
+  expiresAt      DateTime @map("expires_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+model Delegation {
+  id              String    @id @default(uuid()) @db.Uuid
+  nguoiUyQuyenId  String    @map("nguoi_uy_quyen_id") @db.Uuid
+  nguoiNhanId     String    @map("nguoi_nhan_id") @db.Uuid
+  vaiTro          Role      @map("vai_tro")
+  tuNgay          DateTime  @map("tu_ngay")
+  denNgay         DateTime  @map("den_ngay")
+  lyDo            String    @map("ly_do")
+  hieuLuc         Boolean   @default(true) @map("hieu_luc")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  nguoiUyQuyen User @relation("DelegationFrom", fields: [nguoiUyQuyenId], references: [id])
+  nguoiNhan    User @relation("DelegationTo", fields: [nguoiNhanId], references: [id])
+
+  @@index([nguoiNhanId, hieuLuc, denNgay])
+  @@index([nguoiUyQuyenId])
+  @@map("delegations")
+}
+
+// === PART2_END ===
+
+// ---------------------------------------------------------------------------
+// CHá»® KĂ, OTP
+// ---------------------------------------------------------------------------
+
+model Signature {
+  id              String          @id @default(uuid()) @db.Uuid
+  applicationId   String          @map("application_id") @db.Uuid
+  vanBanId        String?         @map("van_ban_id") @db.Uuid
+  buocOrder       Int             @map("buoc_order")
+  tenBuoc         String          @map("ten_buoc")
+  nguoiKyId       String          @map("nguoi_ky_id") @db.Uuid
+  hoTen           String          @map("ho_ten")
+  chucVu          String?         @map("chuc_vu")
+  vaiTro          Role            @map("vai_tro")
+  phuongThuc      SignatureMethod @map("phuong_thuc")
+  thoiDiemKy      DateTime        @map("thoi_diem_ky")
+  maBam           String          @map("ma_bam") // SHA-256 ná»™i dung táº¡i thá»i Ä‘iá»ƒm kĂ½
+  maChuKy         String          @map("ma_chu_ky")
+  hopLe           Boolean         @default(true) @map("hop_le")
+  lyDoKhongHopLe  String?         @map("ly_do_khong_hop_le")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  application Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  nguoiKy     User             @relation("SignatureSigner", fields: [nguoiKyId], references: [id])
+  vanBan      SignedDocument?  @relation(fields: [vanBanId], references: [id])
+
+  @@index([applicationId, buocOrder])
+  @@index([vanBanId])
+  @@map("signatures")
+}
+
+model OtpChallenge {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  applicationId String    @map("application_id") @db.Uuid
+  stepOrder     Int       @map("step_order")
+  otpHash       String    @map("otp_hash") // chá»‰ lÆ°u bÄƒm, KHĂ”NG bao giá» lÆ°u mĂ£ thĂ´
+  hetHanLuc     DateTime  @map("het_han_luc")
+  soLanThu      Int       @default(0) @map("so_lan_thu")
+  soLanConLai   Int       @default(5) @map("so_lan_con_lai")
+  khoaDenLuc    DateTime? @map("khoa_den_luc")
+  daDung        Boolean   @default(false) @map("da_dung")
+  lastSentAt    DateTime  @default(now()) @map("last_sent_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, applicationId])
+  @@index([hetHanLuc])
+  @@map("otp_challenges")
+}
+
+// ---------------------------------------------------------------------------
+// MáºªU & VÄ‚N Báº¢N ÄĂƒ Cáº¤P
+// ---------------------------------------------------------------------------
+
+model DocumentTemplate {
+  id         String    @id @default(uuid()) @db.Uuid
+  ma         String    @unique @map("ma")
+  ten        String    @map("ten")
+  loaiVanBan String    @map("loai_van_ban")
+  noiDung    String    @map("noi_dung") // chá»©a biáº¿n {{ho_ten}}, {{mssv}}...
+  hoatDong   Boolean   @default(true) @map("hoat_dong")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  requestTypes RequestType[]
+
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("document_templates")
+}
+
+model SignedDocument {
+  id               String         @id @default(uuid()) @db.Uuid
+  soVanBan         String         @unique @map("so_van_ban")
+  trichYeu         String         @map("trich_yeu")
+  loaiVanBan       String         @map("loai_van_ban")
+  templateId       String?        @map("template_id") @db.Uuid
+  applicationId    String         @unique @map("application_id") @db.Uuid
+  sinhVienSnapshot Json           @map("sinh_vien_snapshot")
+  noiDung          String         @map("noi_dung")
+  ngayCap          DateTime       @default(now()) @map("ngay_cap")
+  tokenXacThuc     String         @unique @map("token_xac_thuc") // >= 128 bit
+  maBamSha256      String         @map("ma_bam_sha256") // SHA-256 tá»‡p PDF nhá»‹ phĂ¢n
+  pdfStorageKey    String?        @map("pdf_storage_key")
+  trangThai        DocumentStatus @default(VALID) @map("trang_thai")
+  chuKyConHieuLuc  Boolean        @default(true) @map("chu_ky_con_hieu_luc")
+  lyDoThuHoi       String?        @map("ly_do_thu_hoi")
+  ngayThuHoi       DateTime?      @map("ngay_thu_hoi")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  deletedAt        DateTime?      @map("deleted_at")
+
+  application Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  signatures  Signature[]
+  downloads   DocumentDownload[]
+
+  @@index([trangThai])
+  @@index([ngayCap])
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("signed_documents")
+}
+
+model DocumentDownload {
+  id           String   @id @default(uuid()) @db.Uuid
+  documentId   String   @map("document_id") @db.Uuid
+  nguoiTaiId   String?  @map("nguoi_tai_id") @db.Uuid
+  nguoiTaiTen  String   @map("nguoi_tai_ten")
+  diaChiIp     String   @map("dia_chi_ip")
+  userAgent    String?  @map("user_agent")
+  mucDich      String?  @map("muc_dich") // 'export' | 'download'
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  document SignedDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  nguoiTai User?          @relation("DownloadUser", fields: [nguoiTaiId], references: [id])
+
+  @@index([documentId, createdAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("document_downloads")
+}
+
+// ---------------------------------------------------------------------------
+// THĂ”NG BĂO, NHáº¬T KĂ, THÆ¯ VIá»†N
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id            String           @id @default(uuid()) @db.Uuid
+  tieuDe        String           @map("tieu_de")
+  noiDung       String           @map("noi_dung")
+  loai          NotificationType @map("loai")
+  nguoiNhanId   String           @map("nguoi_nhan_id") @db.Uuid
+  applicationId String?          @map("application_id") @db.Uuid
+  maHoSo        String?          @map("ma_ho_so")
+  daDoc         Boolean          @default(false) @map("da_doc")
+  lienKet       String?          @map("lien_ket")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  nguoiNhan User @relation(fields: [nguoiNhanId], references: [id], onDelete: Cascade)
+
+  @@index([nguoiNhanId, daDoc, createdAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id               String   @id @default(uuid()) @db.Uuid
+  luc              DateTime @default(now()) @map("luc")
+  nguoiThucHienId  String?  @map("nguoi_thuc_hien_id") @db.Uuid
+  nguoiThucHienTen String   @map("nguoi_thuc_hien_ten")
+  vaiTro           Role     @map("vai_tro")
+  hanhDong         String   @map("hanh_dong")
+  doiTuong         String   @map("doi_tuong")
+  doiTuongId       String   @map("doi_tuong_id")
+  giaTriTruoc      String?  @map("gia_tri_truoc")
+  giaTriSau        String?  @map("gia_tri_sau")
+  diaChiIp         String   @map("dia_chi_ip")
+  thietBi          String   @map("thiet_bi")
+
+  nguoiThucHien User? @relation(fields: [nguoiThucHienId], references: [id])
+
+  @@index([luc])
+  @@index([nguoiThucHienId])
+  @@index([hanhDong])
+  @@index([doiTuong, doiTuongId])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("audit_logs")
+}
+
+model LibraryDocument {
+  id               String   @id @default(uuid()) @db.Uuid
+  ten              String   @map("ten")
+  nhom             String   @map("nhom")
+  moTa             String   @default("") @map("mo_ta")
+  loaiTep          String   @map("loai_tep")
+  kichThuoc        String   @map("kich_thuoc")
+  url              String   @map("url")
+  luotTai          Int      @default(0) @map("luot_tai")
+  batBuocVoiLoaiDon Json?   @map("bat_buoc_voi_loai_don")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  @@index([nhom])
+  @@index([deletedAt])
+  isDemo   Boolean   @default(false) @map("is_demo")
+
+  @@map("library_documents")
+}
+
+// ---------------------------------------------------------------------------
+// TRá»¢ LĂ áº¢O (RAG)
+// ---------------------------------------------------------------------------
+
+model ChatSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String?   @map("user_id") @db.Uuid
+  tieuDe    String?   @map("tieu_de")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user     User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  messages ChatMessage[]
+
+  @@index([userId])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid()) @db.Uuid
+  sessionId  String   @map("session_id") @db.Uuid
+  vaiTro     ChatRole @map("vai_tro")
+  noiDung    String   @map("noi_dung")
+  nguon      Json?    @map("nguon")
+  goiYForm   Json?    @map("goi_y_form")
+  huuIch     Boolean? @map("huu_ich")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("chat_messages")
+}
+
+// ---------------------------------------------------------------------------
+// PHIĂN (REFRESH TOKEN)
+// ---------------------------------------------------------------------------
+
+model RefreshToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  tokenHash    String    @unique @map("token_hash")
+  hetHan       DateTime  @map("het_han")
+  daThuHoi     Boolean   @default(false) @map("da_thu_hoi")
+  replacedById String?   @map("replaced_by_id") @db.Uuid
+  userAgent    String?   @map("user_agent")
+  diaChiIp     String?   @map("dia_chi_ip")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([hetHan])
+  @@map("refresh_tokens")
+}

@@ -1,0 +1,3453 @@
+openapi: 3.1.0
+info:
+  title: "API Cổng Một cửa điện tử - Trường Đại học Thái Bình"
+  version: "1.0.0"
+  description: |
+    Hợp đồng API giữa frontend (motcua-opencode) và backend cho Cổng dịch vụ một cửa
+    điện tử của Trường Đại học Thái Bình (motcua.tbu.edu.vn).
+
+    QUY ƯỚC PHONG BÌ (ENVELOPE):
+    - Mọi endpoint trả JSON đều bọc theo `SuccessEnvelope` / `ErrorResponse`.
+    - Thành công đối tượng đơn: { success: true, data: <T> }
+    - Thành công danh sách: { success: true, data: [<T>], meta: { page, pageSize, total } }
+    - Lỗi: HTTP status đúng + { success: false, error: { code, message, details } }
+    - Các endpoint KHÔNG trả JSON (tải tệp, PDF, SSE chatbot, SSE chuông thông báo)
+      KHÔNG bọc phong bì; nhưng khi lỗi vẫn trả phong bì lỗi với HTTP status đúng.
+
+    MÃ LỖI NGHIỆP VỤ (chuỗi) nằm trong `error.code`, xem schema `ErrorCode`.
+    `details` là dữ liệu bổ sung tùy lỗi (ví dụ soLanConLai, khoaDenLuc, giayToThieu).
+
+    PHÂN BIỆT BA MÃ 409:
+    - `INVALID_TRANSITION`: trạng thái HIỆN TẠI của hồ sơ/văn bản không cho phép hành động.
+    - `ALREADY_PROCESSED`: bước đã được NGƯỜI KHÁC xử lý xong (tranh chấp đồng thời).
+    - `DUPLICATE_ACTION`: cùng `Idempotency-Key` nhưng NỘI DUNG yêu cầu KHÁC.
+
+    QUY TẮC `Idempotency-Key` (bắt buộc với mọi thao tác ghi nghiệp vụ):
+    - Gửi lại ĐÚNG yêu cầu cũ với cùng khoá => trả lại KẾT QUẢ BAN ĐẦU (cùng HTTP status và
+      body như lần đầu), KHÔNG báo lỗi, KHÔNG tạo hiệu ứng mới.
+    - Cùng khoá nhưng nội dung yêu cầu khác => 409 `DUPLICATE_ACTION`.
+    - Bản ghi khoá được lưu tối đa 24 giờ.
+    Xem thêm `docs/QUYET_DINH.md`.
+
+    RÀNG BUỘC ĐỊNH DANH (đã chốt):
+    - Mã nghiệp vụ KHÔNG bao giờ có định dạng UUID; khi tạo, backend từ chối (VALIDATION_ERROR)
+      nếu giá trị `ma`/`maSo`/`maHoSo` khớp định dạng UUID.
+    - Kiểm tra quyền LUÔN theo bản ghi tìm được, không theo dạng định danh client gửi lên.
+    - Mọi response trả mã nghiệp vụ (`maHoSo`, `ma`, `maSo`) làm định danh công khai.
+    - API công khai chỉ nhận `token` xác thực / số văn bản, KHÔNG nhận UUID nội bộ.
+
+    XUẤT TỆP (`GET /documents/{id}/export`):
+    - Trả `url` có chữ ký, HẾT HẠN 5 PHÚT, gắn với người dùng đã yêu cầu.
+    - Mỗi lần tải qua `url` được ghi vào bảng `document_downloads`.
+    - KHÔNG nhúng nội dung tệp trong JSON.
+
+    ĐỊNH DANH:
+    - Khóa chính/khóa ngoại trong DB là UUID.
+    - API trả thêm mã nghiệp vụ đọc được (Application.maHoSo, RequestType.ma, User.maSo,
+      Khoa/PhongBan/Nganh/Lop/KhoaHoc.ma, Workflow.ma, DocumentTemplate.ma).
+    - URL và form chọn dùng mã nghiệp vụ (Application.maHoSo, RequestType.ma, Workflow.ma,
+      DocumentTemplate.ma, User.maSo, Khoa/PhongBan/Nganh/Lop/KhoaHoc.ma); backend tự đổi
+      sang UUID nội bộ.
+    - Để không phải sửa toàn bộ tầng service của frontend cùng lúc, backend cũng CHẤP NHẬN
+      UUID nội bộ tại các tham số đường dẫn nêu trên (định dạng UUID không trùng với mã
+      nghiệp vụ). Đây là tương thích ngược; frontend nên chuyển dần sang mã nghiệp vụ.
+    - Kiểm tra quyền truy cập luôn dựa trên BẢN GHI (scope theo khoa/lớp/cố vấn/người tạo),
+      không bao giờ tin định danh do client gửi lên (chống IDOR).
+
+    QUYỀN RIÊNG TƯ (Nghị định 13/2023/NĐ-CP):
+    - Mọi API công khai (tag Công khai) trả dữ liệu cá nhân đã che ở phía máy chủ
+      (họ tên dạng "Nguyễn V** A", mã số dạng "2021***").
+    - Không trả họ tên/MSSV/email/số điện thoại đầy đủ ở bất kỳ trường nào, kể cả
+      trong thông điệp lỗi hay nhật ký.
+
+    XÁC THỰC:
+    - JWT Bearer access token (15 phút) qua header Authorization.
+    - Refresh token xoay vòng lưu trong cookie httpOnly (không truy cập được bằng JS).
+    - Endpoint `/auth/quick-login` chỉ dùng cho trình diễn, PHẢI tắt ở production.
+
+    ĐỌC THÊM: docs/FRONTEND_CONTRACT.md.
+servers:
+  - url: /api/v1
+    description: "API version 1"
+tags:
+  - name: "Xác thực"
+    description: "Đăng nhập, phiên làm việc, refresh token"
+  - name: "Hồ sơ một cửa"
+    description: "Sinh viên nộp và theo dõi đơn"
+  - name: "Phê duyệt"
+    description: "Người xử lý duyệt/từ chối/yêu cầu bổ sung"
+  - name: "Ký OTP"
+    description: "Gửi và kiểm tra mã OTP khi ký số"
+  - name: "Ủy quyền"
+    description: "Ủy quyền duyệt tạm thời"
+  - name: "Văn bản"
+    description: "Văn bản đã cấp, thu hồi, xuất tệp, báo cáo"
+  - name: "Mẫu văn bản"
+    description: "Quản lý mẫu văn bản"
+  - name: "Công khai"
+    description: "Tra cứu và xác thực văn bản công khai, thư viện biểu mẫu"
+  - name: "Thông báo"
+    description: "Thông báo trong hệ thống"
+  - name: "Nhật ký"
+    description: "Nhật ký hệ thống (append-only)"
+  - name: "Trợ lý ảo"
+    description: "Chatbot RAG hỏi đáp thủ tục"
+  - name: "Loại đơn"
+    description: "Loại đơn và biểu mẫu động"
+  - name: "Luồng duyệt"
+    description: "Định nghĩa luồng duyệt nhiều cấp"
+  - name: "Người dùng"
+    description: "Quản lý người dùng và phân quyền"
+  - name: "Danh mục"
+    description: "Khoa, phòng ban, ngành, lớp, khóa học"
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      tags: ["Xác thực"]
+      summary: "Đăng nhập bằng mã số/email và mật khẩu"
+      description: "Trả access token và thông tin người dùng; refresh token đặt trong cookie httpOnly."
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginPayload' }
+      responses:
+        '200':
+          description: "Đăng nhập thành công"
+          headers:
+            Set-Cookie:
+              description: "Refresh token (httpOnly, Secure, SameSite=Lax)"
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionEnvelope' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/quick-login:
+    post:
+      tags: ["Xác thực"]
+      summary: "Đăng nhập nhanh theo vai trò (CHỈ TRÌNH DIỄN)"
+      description: "Chỉ phục vụ bản demo. Ở production phải trả 404 hoặc 403 tùy cờ ENABLE_QUICK_LOGIN."
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { $ref: '#/components/schemas/Role' }
+      responses:
+        '200':
+          description: "Đăng nhập nhanh thành công"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionEnvelope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /auth/refresh:
+    post:
+      tags: ["Xác thực"]
+      summary: "Làm mới access token"
+      description: "Đọc refresh token từ cookie httpOnly, xoay vòng và trả access token mới."
+      security: []
+      responses:
+        '200':
+          description: "Access token mới"
+          headers:
+            Set-Cookie:
+              description: "Refresh token mới (xoay vòng)"
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [token, hetHan]
+                        properties:
+                          token: { type: string, description: "Access token mới" }
+                          hetHan: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/me:
+    get:
+      tags: ["Xác thực"]
+      summary: "Lấy người dùng của phiên hiện tại"
+      responses:
+        '200':
+          description: "Người dùng hiện tại"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/User' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/logout:
+    post:
+      tags: ["Xác thực"]
+      summary: "Đăng xuất và thu hồi phiên"
+      responses:
+        '204': { description: "Đã đăng xuất" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/profile:
+    patch:
+      tags: ["Xác thực"]
+      summary: "Cập nhật hồ sơ cá nhân"
+      description: "Chỉ cho phép các trường an toàn (hoTen, soDienThoai, avatarUrl, ngaySinh, gioiTinh). Từ chối đổi role/maSo/donViId."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hoTen: { type: string }
+                soDienThoai: { type: string }
+                avatarUrl: { type: string }
+                ngaySinh: { type: string, format: date }
+                gioiTinh: { $ref: '#/components/schemas/Gender' }
+      responses:
+        '200':
+          description: "Hồ sơ sau khi cập nhật"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/User' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /applications/mine:
+    get:
+      tags: ["Hồ sơ một cửa"]
+      summary: "Danh sách hồ sơ của sinh viên đang đăng nhập"
+      x-roles: [SINH_VIEN]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/TrangThaiApp'
+        - $ref: '#/components/parameters/RequestTypeId'
+        - $ref: '#/components/parameters/TuKhoa'
+        - $ref: '#/components/parameters/KhoaFilter'
+        - $ref: '#/components/parameters/LopFilter'
+        - $ref: '#/components/parameters/HanXuLy'
+        - $ref: '#/components/parameters/SapXep'
+      responses:
+        '200':
+          description: "Danh sách hồ sơ phân trang"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Application' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /applications/mine/recent:
+    get:
+      tags: ["Hồ sơ một cửa"]
+      summary: "Vài hồ sơ gần đây của sinh viên (trừ bản nháp)"
+      x-roles: [SINH_VIEN]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 20, default: 5 }
+      responses:
+        '200':
+          description: "Hồ sơ gần đây"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Application' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /applications/mine/stats:
+    get:
+      tags: ["Hồ sơ một cửa"]
+      summary: "Thống kê nhanh hồ sơ của sinh viên"
+      x-roles: [SINH_VIEN]
+      responses:
+        '200':
+          description: "Thống kê cá nhân"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/MyStats' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /applications:
+    post:
+      tags: ["Hồ sơ một cửa"]
+      summary: "Tạo bản nháp hồ sơ"
+      x-roles: [SINH_VIEN]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateApplicationPayload' }
+      responses:
+        '201':
+          description: "Bản nháp đã tạo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Application' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '409': { $ref: '#/components/responses/DuplicateAction' }
+  /applications/{maHoSo}:
+    parameters:
+      - $ref: '#/components/parameters/MaHoSo'
+    get:
+      tags: ["Hồ sơ một cửa"]
+      summary: "Chi tiết hồ sơ theo mã hồ sơ"
+      x-roles: [SINH_VIEN, CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Chi tiết hồ sơ"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/ApplicationDetail' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: ["Hồ sơ một cửa"]
+      summary: "Cập nhật bản nháp hoặc hồ sơ đang cần bổ sung"
+      x-roles: [SINH_VIEN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateApplicationPayload' }
+      responses:
+        '200':
+          description: "Hồ sơ sau cập nhật"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Application' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: ["Hồ sơ một cửa"]
+      summary: "Xoá bản nháp hoặc hồ sơ đã rút"
+      x-roles: [SINH_VIEN]
+      responses:
+        '204': { description: "Đã xoá" }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+  /applications/{maHoSo}/submit:
+    post:
+      tags: ["Hồ sơ một cửa"]
+      summary: "Nộp hồ sơ vào luồng duyệt"
+      description: "Kiểm tra đủ trường bắt buộc và giấy tờ; thiếu giấy tờ trả MISSING_ATTACHMENT."
+      x-roles: [SINH_VIEN]
+      parameters:
+        - $ref: '#/components/parameters/MaHoSo'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: "Hồ sơ đã nộp"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Application' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+        '422': { $ref: '#/components/responses/MissingAttachment' }
+  /applications/{maHoSo}/cancel:
+    post:
+      tags: ["Hồ sơ một cửa"]
+      summary: "Rút hồ sơ (chỉ khi chưa cấp nào duyệt)"
+      x-roles: [SINH_VIEN]
+      parameters:
+        - $ref: '#/components/parameters/MaHoSo'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { lyDo: { type: string, maxLength: 1000 } }
+      responses:
+        '200':
+          description: "Hồ sơ đã rút"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Application' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+  /applications/{maHoSo}/supplement:
+    post:
+      tags: ["Hồ sơ một cửa"]
+      summary: "Bổ sung hồ sơ đang ở trạng thái Cần bổ sung"
+      description: "Sau khi bổ sung, hồ sơ quay lại ĐÚNG cấp đã yêu cầu (yeuCauBoSung.quayVeBuocOrder)."
+      x-roles: [SINH_VIEN]
+      parameters:
+        - $ref: '#/components/parameters/MaHoSo'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SupplementInput' }
+      responses:
+        '200':
+          description: "Hồ sơ sau bổ sung"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Application' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+  /applications/{maHoSo}/next-approver-roles:
+    get:
+      tags: ["Hồ sơ một cửa"]
+      summary: "Vai trò của bước duyệt kế tiếp"
+      parameters:
+        - $ref: '#/components/parameters/MaHoSo'
+      responses:
+        '200':
+          description: "Danh sách vai trò chờ duyệt"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Role' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /approvals/pending:
+    get:
+      tags: ["Phê duyệt"]
+      summary: "Hồ sơ đang chờ người đăng nhập xử lý"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/TrangThaiApp'
+        - $ref: '#/components/parameters/RequestTypeId'
+        - $ref: '#/components/parameters/TuKhoa'
+        - $ref: '#/components/parameters/KhoaFilter'
+        - $ref: '#/components/parameters/LopFilter'
+        - $ref: '#/components/parameters/HanXuLy'
+        - $ref: '#/components/parameters/SapXep'
+      responses:
+        '200':
+          description: "Danh sách chờ duyệt"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Application' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /approvals/processed:
+    get:
+      tags: ["Phê duyệt"]
+      summary: "Hồ sơ người đăng nhập đã xử lý"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/TrangThaiApp'
+        - $ref: '#/components/parameters/RequestTypeId'
+        - $ref: '#/components/parameters/TuKhoa'
+        - $ref: '#/components/parameters/SapXep'
+      responses:
+        '200':
+          description: "Danh sách đã xử lý"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Application' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /approvals/stats:
+    get:
+      tags: ["Phê duyệt"]
+      summary: "Thống kê phục vụ trang tổng quan"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Thống kê phê duyệt"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/ApprovalStats' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /approvals/overdue:
+    get:
+      tags: ["Phê duyệt"]
+      summary: "Hồ sơ quá hạn hoặc sắp hết hạn"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 5 }
+      responses:
+        '200':
+          description: "Danh sách cảnh báo hạn"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Application' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /approvals/pending-count:
+    get:
+      tags: ["Phê duyệt"]
+      summary: "Số hồ sơ đang chờ (badge menu)"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Số lượng"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { type: integer, minimum: 0 } }
+  /approvals/{maHoSo}/approve:
+    post:
+      tags: ["Phê duyệt"]
+      summary: "Duyệt hồ sơ ở bước hiện tại"
+      description: "Bước ONE_CLICK duyệt ngay; bước OTP bắt buộc challengeId + otp. Bước cuối tự phát hành văn bản."
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/MaHoSo'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApproveInput' }
+      responses:
+        '200':
+          description: "Hồ sơ sau khi duyệt"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/ApplicationDetail' } }
+        '400': { $ref: '#/components/responses/OtpInvalid' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '409':
+          description: "Chuyển trạng thái không hợp lệ hoặc đã được người khác xử lý"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '410': { $ref: '#/components/responses/OtpExpired' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '423': { $ref: '#/components/responses/OtpLocked' }
+  /approvals/{maHoSo}/reject:
+    post:
+      tags: ["Phê duyệt"]
+      summary: "Từ chối hồ sơ (bắt buộc lý do)"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/MaHoSo'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lyDo]
+              properties: { lyDo: { type: string, minLength: 1, maxLength: 2000 } }
+      responses:
+        '200':
+          description: "Hồ sơ đã bị từ chối"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/ApplicationDetail' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /approvals/{maHoSo}/request-supplement:
+    post:
+      tags: ["Phê duyệt"]
+      summary: "Yêu cầu bổ sung hồ sơ (bắt buộc nội dung)"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/MaHoSo'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [noiDung]
+              properties: { noiDung: { type: string, minLength: 1, maxLength: 2000 } }
+      responses:
+        '200':
+          description: "Hồ sơ chuyển sang Cần bổ sung"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/ApplicationDetail' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /approvals/batch:
+    post:
+      tags: ["Phê duyệt"]
+      summary: "Duyệt hàng loạt các bước Một chạm"
+      description: "Không ném lỗi khi một hồ sơ thất bại; trả danh sách thatBai."
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [maHoSoList]
+              properties:
+                maHoSoList:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items: { type: string }
+                ghiChu: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: "Kết quả duyệt hàng loạt"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/BatchApproveResult' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /otp/send:
+    post:
+      tags: ["Ký OTP"]
+      summary: "Gửi mã OTP cho bước ký hiện tại"
+      description: "Sinh mã 6 số bằng crypto.randomInt, chỉ lưu hash. KHÔNG bao giờ trả mã trong response hoặc ghi vào log."
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [maHoSo]
+              properties: { maHoSo: { type: string } }
+      responses:
+        '200':
+          description: "Phiên OTP đã tạo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/OtpChallenge' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /otp/{challengeId}/resend:
+    post:
+      tags: ["Ký OTP"]
+      summary: "Gửi lại mã OTP (chặn 30 giây)"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/ChallengeId'
+      responses:
+        '200':
+          description: "Phiên OTP làm mới"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/OtpChallenge' } }
+        '410': { $ref: '#/components/responses/OtpExpired' }
+        '423': { $ref: '#/components/responses/OtpLocked' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /otp/{challengeId}:
+    get:
+      tags: ["Ký OTP"]
+      summary: "Trạng thái phiên OTP (đếm ngược)"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/ChallengeId'
+      responses:
+        '200':
+          description: "Trạng thái phiên OTP"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/OtpChallenge' } }
+        '410': { $ref: '#/components/responses/OtpExpired' }
+  /delegations:
+    get:
+      tags: ["Ủy quyền"]
+      summary: "Danh sách ủy quyền liên quan"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Danh sách ủy quyền"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Delegation' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+    post:
+      tags: ["Ủy quyền"]
+      summary: "Tạo ủy quyền duyệt tạm thời"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DelegationInput' }
+      responses:
+        '201':
+          description: "Ủy quyền đã tạo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Delegation' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /delegations/{id}:
+    delete:
+      tags: ["Ủy quyền"]
+      summary: "Huỷ ủy quyền"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204': { description: "Đã huỷ" }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+  /delegations/eligible-users:
+    get:
+      tags: ["Ủy quyền"]
+      summary: "Người có thể nhận ủy quyền theo vai trò"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - name: vaiTro
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Role' }
+      responses:
+        '200':
+          description: "Danh sách người dùng hợp lệ"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/User' }
+  /applications/{maHoSo}/document:
+    get:
+      tags: ["Văn bản"]
+      summary: "Văn bản đã cấp của một hồ sơ (xem trước A4)"
+      x-roles: [SINH_VIEN, CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/MaHoSo'
+      responses:
+        '200':
+          description: "Văn bản đã cấp"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/SignedDocument' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+  /documents:
+    get:
+      tags: ["Văn bản"]
+      summary: "Danh sách văn bản đã cấp"
+      x-roles: [PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/TuKhoa'
+        - $ref: '#/components/parameters/TrangThaiDoc'
+        - name: loaiVanBan
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/KhoaFilter'
+        - name: tuNgay
+          in: query
+          schema: { type: string, format: date }
+        - name: denNgay
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: "Danh sách văn bản"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/SignedDocument' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /documents/{id}/revoke:
+    post:
+      tags: ["Văn bản"]
+      summary: "Thu hồi văn bản (bắt buộc lý do)"
+      x-roles: [PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lyDo]
+              properties: { lyDo: { type: string, minLength: 1, maxLength: 2000 } }
+      responses:
+        '200':
+          description: "Văn bản đã thu hồi"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/SignedDocument' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /documents/{id}/download-log:
+    post:
+      tags: ["Văn bản"]
+      summary: "Ghi nhận một lượt tải văn bản"
+      x-roles: [SINH_VIEN, CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: "Văn bản kèm lịch sử tải"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/SignedDocument' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { $ref: '#/components/responses/DocumentRevoked' }
+  /documents/{id}/export:
+    get:
+      tags: ["Văn bản"]
+      summary: "Xuất văn bản để tải/in"
+      description: >-
+        Trả phong bì JSON chỉ chứa MÔ TẢ TỆP kèm `url` có chữ ký (KHÔNG nhúng nội dung tệp).
+        `url` hết hạn sau 5 phút và gắn với người dùng đã yêu cầu; mỗi lượt tải qua `url`
+        được ghi vào `document_downloads`. Tệp nhị phân tải qua `GET /files/{fileToken}`
+        (KHÔNG bọc phong bì). Văn bản đã thu hồi trả DOCUMENT_REVOKED.
+        Ở chế độ mock, frontend dùng cùng luồng: mock trả một blob URL để giao diện xử lý đồng nhất.
+      x-roles: [SINH_VIEN, CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: dinhDang
+          in: query
+          required: true
+          schema: { type: string, enum: [pdf, html] }
+      responses:
+        '200':
+          description: "Mô tả tệp xuất"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/ExportedFile' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { $ref: '#/components/responses/DocumentRevoked' }
+  /documents/report:
+    get:
+      tags: ["Văn bản"]
+      summary: "Tổng quan báo cáo thống kê"
+      x-roles: [PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Số liệu tổng quan"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/ReportOverview' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /documents/report/rows:
+    get:
+      tags: ["Văn bản"]
+      summary: "Các bảng số liệu chi tiết của báo cáo"
+      x-roles: [PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Bảng số liệu"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/ReportRows' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /files/{fileToken}:
+    get:
+      tags: ["Văn bản"]
+      summary: "Tải tệp nhị phân bằng liên kết có chữ ký (KHÔNG bọc phong bì)"
+      description: "Trả nội dung tệp (PDF/HTML) trực tiếp. Liên kết hết hạn sau 5 phút. Lỗi trả phong bì lỗi."
+      parameters:
+        - $ref: '#/components/parameters/FileToken'
+      responses:
+        '200':
+          description: "Nội dung tệp"
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+            text/html:
+              schema: { type: string }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { $ref: '#/components/responses/DocumentRevoked' }
+  /templates:
+    get:
+      tags: ["Mẫu văn bản"]
+      summary: "Danh sách mẫu văn bản"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Danh sách mẫu"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/DocumentTemplate' }
+    post:
+      tags: ["Mẫu văn bản"]
+      summary: "Tạo mẫu văn bản"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DocumentTemplateInput' }
+      responses:
+        '201':
+          description: "Mẫu đã tạo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/DocumentTemplate' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /templates/{ma}:
+    parameters:
+      - $ref: '#/components/parameters/Ma'
+    get:
+      tags: ["Mẫu văn bản"]
+      summary: "Chi tiết mẫu theo mã"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Mẫu văn bản"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/DocumentTemplate' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: ["Mẫu văn bản"]
+      summary: "Cập nhật mẫu văn bản"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DocumentTemplateInput' }
+      responses:
+        '200':
+          description: "Mẫu sau cập nhật"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/DocumentTemplate' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: ["Mẫu văn bản"]
+      summary: "Xoá mẫu văn bản"
+      x-roles: [ADMIN]
+      responses:
+        '204': { description: "Đã xoá" }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+  /templates/{ma}/render:
+    post:
+      tags: ["Mẫu văn bản"]
+      summary: "Kết xuất mẫu với bộ giá trị cho trước"
+      x-roles: [CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/Ma'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                values: { type: object, additionalProperties: { type: string } }
+      responses:
+        '200':
+          description: "Nội dung đã điền"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { type: string } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /public/verify/token/{token}:
+    get:
+      tags: ["Công khai"]
+      summary: "Xác thực văn bản theo token QR (công khai)"
+      description: "Trả họ tên/MSSV đã che ở máy chủ. Văn bản đã thu hồi vẫn trả kết quả với trangThai REVOKED."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Token'
+      responses:
+        '200':
+          description: "Kết quả xác thực"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/PublicVerifyResult' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /public/verify/so-van-ban/{so}:
+    get:
+      tags: ["Công khai"]
+      summary: "Xác thực văn bản theo số văn bản (công khai)"
+      security: []
+      parameters:
+        - name: so
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: "Kết quả xác thực"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/PublicVerifyResult' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /public/verify/token/{token}/compare:
+    post:
+      tags: ["Công khai"]
+      summary: "Đối chiếu mã băm tệp người dùng tải lên (công khai)"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Token'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [maBamNguoiDung]
+              properties:
+                maBamNguoiDung:
+                  type: string
+                  pattern: '^[a-fA-F0-9]{64}$'
+                  description: "SHA-256 hex của tệp PDF"
+      responses:
+        '200':
+          description: "Kết quả đối chiếu"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/PublicVerifyResult' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /public/verify/recent:
+    get:
+      tags: ["Công khai"]
+      summary: "Vài văn bản mới cấp (công khai, dữ liệu đã che)"
+      security: []
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 20, default: 5 }
+      responses:
+        '200':
+          description: "Danh sách gợi ý tra cứu"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/PublicSignedDocument' }
+  /notifications:
+    get:
+      tags: ["Thông báo"]
+      summary: "Danh sách thông báo của người đăng nhập"
+      responses:
+        '200':
+          description: "Danh sách thông báo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Notification' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /notifications/unread-count:
+    get:
+      tags: ["Thông báo"]
+      summary: "Số thông báo chưa đọc"
+      responses:
+        '200':
+          description: "Số lượng chưa đọc"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { type: integer, minimum: 0 } }
+  /notifications/read-all:
+    post:
+      tags: ["Thông báo"]
+      summary: "Đánh dấu tất cả đã đọc"
+      responses:
+        '204': { description: "Đã đánh dấu" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /notifications/stream:
+    get:
+      tags: ["Thông báo"]
+      summary: "Kênh SSE chuông thông báo realtime (KHÔNG bọc phong bì)"
+      description: "Server-Sent Events. Mỗi sự kiện `data:` là một đối tượng Notification JSON."
+      responses:
+        '200':
+          description: "Luồng sự kiện"
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /notifications/{id}/read:
+    post:
+      tags: ["Thông báo"]
+      summary: "Đánh dấu một thông báo đã đọc"
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204': { description: "Đã đánh dấu" }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /notifications/{id}:
+    delete:
+      tags: ["Thông báo"]
+      summary: "Xoá thông báo"
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204': { description: "Đã xoá" }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /library:
+    get:
+      tags: ["Công khai"]
+      summary: "Danh sách biểu mẫu & tài liệu (công khai)"
+      security: []
+      parameters:
+        - name: tuKhoa
+          in: query
+          schema: { type: string }
+        - name: nhom
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: "Danh sách tài liệu"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/LibraryItem' }
+  /library/groups:
+    get:
+      tags: ["Công khai"]
+      summary: "Danh sách nhóm tài liệu (công khai)"
+      security: []
+      responses:
+        '200':
+          description: "Tên các nhóm"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { type: string }
+  /library/{id}:
+    get:
+      tags: ["Công khai"]
+      summary: "Chi tiết một tài liệu (công khai)"
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: "Tài liệu"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/LibraryItem' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /library/{id}/download:
+    post:
+      tags: ["Công khai"]
+      summary: "Ghi nhận lượt tải và trả mô tả tệp (công khai)"
+      description: "Trả `url` liên kết tải trực tiếp; tệp nhị phân tại url KHÔNG bọc phong bì."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: "Mô tả tệp tải"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/LibraryDownload' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /audit-logs:
+    get:
+      tags: ["Nhật ký"]
+      summary: "Truy vấn nhật ký hệ thống"
+      x-roles: [ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/TuKhoa'
+        - name: nguoiThucHienId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: hanhDong
+          in: query
+          schema: { type: string }
+        - name: tuNgay
+          in: query
+          schema: { type: string, format: date }
+        - name: denNgay
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: "Danh sách nhật ký"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/AuditLog' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /audit-logs/actions:
+    get:
+      tags: ["Nhật ký"]
+      summary: "Danh sách mã hành động đã xuất hiện"
+      x-roles: [ADMIN]
+      responses:
+        '200':
+          description: "Các hành động"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          required: [ma, nhan]
+                          properties:
+                            ma: { type: string }
+                            nhan: { type: string }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /audit-logs/{id}:
+    get:
+      tags: ["Nhật ký"]
+      summary: "Chi tiết một bản ghi nhật ký"
+      x-roles: [ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: "Bản ghi nhật ký"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/AuditLog' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /chat/stream:
+    post:
+      tags: ["Trợ lý ảo"]
+      summary: "Hỏi trợ lý ảo, trả lời dạng streaming SSE (KHÔNG bọc phong bì)"
+      description: >-
+        Server-Sent Events. Mỗi sự kiện `data:` là một ChatChunk JSON
+        (loai = token | nguon | xong), kết thúc bằng `data: [DONE]`.
+        Xác thực bằng JWT dùng chung secret với backend.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cauHoi]
+              properties: { cauHoi: { type: string, minLength: 1, maxLength: 1000 } }
+      responses:
+        '200':
+          description: "Luồng trả lời"
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /chat/suggestions:
+    get:
+      tags: ["Trợ lý ảo"]
+      summary: "Câu hỏi gợi ý"
+      security: []
+      responses:
+        '200':
+          description: "Danh sách câu hỏi gợi ý"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { type: string }
+  /chat/messages/{messageId}/feedback:
+    post:
+      tags: ["Trợ lý ảo"]
+      summary: "Đánh giá câu trả lời hữu ích / không hữu ích"
+      parameters:
+        - $ref: '#/components/parameters/MessageId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [huuIch]
+              properties: { huuIch: { type: boolean } }
+      responses:
+        '204': { description: "Đã ghi nhận" }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /request-types:
+    get:
+      tags: ["Loại đơn"]
+      summary: "Danh sách loại đơn"
+      x-roles: [SINH_VIEN, CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - name: hoatDong
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: "Danh sách loại đơn"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/RequestType' }
+    post:
+      tags: ["Loại đơn"]
+      summary: "Tạo loại đơn"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RequestTypeInput' }
+      responses:
+        '201':
+          description: "Loại đơn đã tạo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/RequestType' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /request-types/stats:
+    get:
+      tags: ["Loại đơn"]
+      summary: "Số lượt nộp theo từng loại đơn"
+      x-roles: [ADMIN]
+      responses:
+        '200':
+          description: "Thống kê lượt nộp"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/RequestTypeStat' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /request-types/{ma}:
+    parameters:
+      - $ref: '#/components/parameters/Ma'
+    get:
+      tags: ["Loại đơn"]
+      summary: "Chi tiết loại đơn theo mã"
+      x-roles: [SINH_VIEN, CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Loại đơn"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/RequestType' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: ["Loại đơn"]
+      summary: "Cập nhật loại đơn"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RequestTypeInput' }
+      responses:
+        '200':
+          description: "Loại đơn sau cập nhật"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/RequestType' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: ["Loại đơn"]
+      summary: "Xoá loại đơn"
+      x-roles: [ADMIN]
+      responses:
+        '204': { description: "Đã xoá" }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+  /workflows:
+    get:
+      tags: ["Luồng duyệt"]
+      summary: "Danh sách luồng duyệt"
+      x-roles: [SINH_VIEN, CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Danh sách luồng"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Workflow' }
+    post:
+      tags: ["Luồng duyệt"]
+      summary: "Tạo luồng duyệt"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorkflowInput' }
+      responses:
+        '201':
+          description: "Luồng đã tạo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Workflow' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /workflows/validate:
+    post:
+      tags: ["Luồng duyệt"]
+      summary: "Kiểm tra tính hợp lệ của luồng"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [steps]
+              properties:
+                steps:
+                  type: array
+                  items: { $ref: '#/components/schemas/WorkflowStep' }
+      responses:
+        '200':
+          description: "Kết quả kiểm tra"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/WorkflowValidation' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /workflows/{ma}:
+    parameters:
+      - $ref: '#/components/parameters/Ma'
+    get:
+      tags: ["Luồng duyệt"]
+      summary: "Chi tiết luồng theo mã"
+      x-roles: [SINH_VIEN, CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Luồng duyệt"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Workflow' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: ["Luồng duyệt"]
+      summary: "Cập nhật luồng duyệt"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorkflowInput' }
+      responses:
+        '200':
+          description: "Luồng sau cập nhật"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Workflow' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: ["Luồng duyệt"]
+      summary: "Xoá luồng duyệt"
+      x-roles: [ADMIN]
+      responses:
+        '204': { description: "Đã xoá" }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+  /users:
+    get:
+      tags: ["Người dùng"]
+      summary: "Danh sách người dùng"
+      x-roles: [ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/TuKhoa'
+        - name: vaiTro
+          in: query
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/Role'
+              - { type: string, enum: [ALL] }
+        - name: trangThai
+          in: query
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/UserStatus'
+              - { type: string, enum: [ALL] }
+        - name: donViId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: "Danh sách người dùng"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/User' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+    post:
+      tags: ["Người dùng"]
+      summary: "Tạo người dùng"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserInput' }
+      responses:
+        '201':
+          description: "Người dùng đã tạo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/User' } }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /users/advisors:
+    get:
+      tags: ["Người dùng"]
+      summary: "Danh sách cố vấn học tập"
+      x-roles: [TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Danh sách cố vấn"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/User' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+  /users/{maSo}:
+    parameters:
+      - $ref: '#/components/parameters/MaSo'
+    get:
+      tags: ["Người dùng"]
+      summary: "Chi tiết người dùng theo mã số"
+      x-roles: [ADMIN]
+      responses:
+        '200':
+          description: "Người dùng"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/User' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: ["Người dùng"]
+      summary: "Cập nhật người dùng"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserInput' }
+      responses:
+        '200':
+          description: "Người dùng sau cập nhật"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/User' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: ["Người dùng"]
+      summary: "Xoá người dùng (không xoá ADMIN)"
+      x-roles: [ADMIN]
+      responses:
+        '204': { description: "Đã xoá" }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{maSo}/reset-password:
+    post:
+      tags: ["Người dùng"]
+      summary: "Đặt lại mật khẩu về mật khẩu tạm"
+      x-roles: [ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/MaSo'
+      responses:
+        '200':
+          description: "Mật khẩu tạm"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [matKhauTam]
+                        properties: { matKhauTam: { type: string } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{maSo}/request-types:
+    get:
+      tags: ["Loại đơn"]
+      summary: "Các loại đơn được phép nộp cho một người dùng"
+      x-roles: [SINH_VIEN, CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/MaSo'
+      responses:
+        '200':
+          description: "Danh sách loại đơn được phép"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/RequestType' }
+        '403': { $ref: '#/components/responses/ForbiddenScope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /catalog/khoa:
+    get:
+      tags: ["Danh mục"]
+      summary: "Danh sách khoa"
+      x-roles: [TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Danh sách khoa"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Khoa' }
+    post:
+      tags: ["Danh mục"]
+      summary: "Tạo khoa"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KhoaInput' }
+      responses:
+        '201':
+          description: "Khoa đã tạo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Khoa' } }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /catalog/khoa/{ma}:
+    parameters:
+      - $ref: '#/components/parameters/Ma'
+    get:
+      tags: ["Danh mục"]
+      summary: "Chi tiết khoa theo mã"
+      x-roles: [TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Khoa"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Khoa' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: ["Danh mục"]
+      summary: "Cập nhật khoa"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KhoaInput' }
+      responses:
+        '200':
+          description: "Khoa sau cập nhật"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Khoa' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: ["Danh mục"]
+      summary: "Xoá khoa"
+      x-roles: [ADMIN]
+      responses:
+        '204': { description: "Đã xoá" }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+  /catalog/phong-ban:
+    get:
+      tags: ["Danh mục"]
+      summary: "Danh sách phòng ban"
+      x-roles: [TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Danh sách phòng ban"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/PhongBan' }
+    post:
+      tags: ["Danh mục"]
+      summary: "Tạo phòng ban"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PhongBanInput' }
+      responses:
+        '201':
+          description: "Phòng ban đã tạo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/PhongBan' } }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /catalog/phong-ban/{ma}:
+    parameters:
+      - $ref: '#/components/parameters/Ma'
+    get:
+      tags: ["Danh mục"]
+      summary: "Chi tiết phòng ban theo mã"
+      x-roles: [TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Phòng ban"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/PhongBan' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: ["Danh mục"]
+      summary: "Cập nhật phòng ban"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PhongBanInput' }
+      responses:
+        '200':
+          description: "Phòng ban sau cập nhật"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/PhongBan' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: ["Danh mục"]
+      summary: "Xoá phòng ban"
+      x-roles: [ADMIN]
+      responses:
+        '204': { description: "Đã xoá" }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+  /catalog/nganh:
+    get:
+      tags: ["Danh mục"]
+      summary: "Danh sách ngành"
+      x-roles: [TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Danh sách ngành"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Nganh' }
+    post:
+      tags: ["Danh mục"]
+      summary: "Tạo ngành"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NganhInput' }
+      responses:
+        '201':
+          description: "Ngành đã tạo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Nganh' } }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /catalog/nganh/{ma}:
+    parameters:
+      - $ref: '#/components/parameters/Ma'
+    get:
+      tags: ["Danh mục"]
+      summary: "Chi tiết ngành theo mã"
+      x-roles: [TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Ngành"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Nganh' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: ["Danh mục"]
+      summary: "Cập nhật ngành"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NganhInput' }
+      responses:
+        '200':
+          description: "Ngành sau cập nhật"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Nganh' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: ["Danh mục"]
+      summary: "Xoá ngành"
+      x-roles: [ADMIN]
+      responses:
+        '204': { description: "Đã xoá" }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+  /catalog/lop:
+    get:
+      tags: ["Danh mục"]
+      summary: "Danh sách lớp"
+      x-roles: [TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Danh sách lớp"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Lop' }
+    post:
+      tags: ["Danh mục"]
+      summary: "Tạo lớp"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LopInput' }
+      responses:
+        '201':
+          description: "Lớp đã tạo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Lop' } }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /catalog/lop/{ma}:
+    parameters:
+      - $ref: '#/components/parameters/Ma'
+    get:
+      tags: ["Danh mục"]
+      summary: "Chi tiết lớp theo mã"
+      x-roles: [TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Lớp"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Lop' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: ["Danh mục"]
+      summary: "Cập nhật lớp"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LopInput' }
+      responses:
+        '200':
+          description: "Lớp sau cập nhật"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/Lop' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: ["Danh mục"]
+      summary: "Xoá lớp"
+      x-roles: [ADMIN]
+      responses:
+        '204': { description: "Đã xoá" }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+  /catalog/khoa-hoc:
+    get:
+      tags: ["Danh mục"]
+      summary: "Danh sách khóa học"
+      x-roles: [TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Danh sách khóa học"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/KhoaHoc' }
+    post:
+      tags: ["Danh mục"]
+      summary: "Tạo khóa học"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KhoaHocInput' }
+      responses:
+        '201':
+          description: "Khóa học đã tạo"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/KhoaHoc' } }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /catalog/khoa-hoc/{ma}:
+    parameters:
+      - $ref: '#/components/parameters/Ma'
+    get:
+      tags: ["Danh mục"]
+      summary: "Chi tiết khóa học theo mã"
+      x-roles: [TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+      responses:
+        '200':
+          description: "Khóa học"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/KhoaHoc' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: ["Danh mục"]
+      summary: "Cập nhật khóa học"
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KhoaHocInput' }
+      responses:
+        '200':
+          description: "Khóa học sau cập nhật"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties: { data: { $ref: '#/components/schemas/KhoaHoc' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: ["Danh mục"]
+      summary: "Xoá khóa học"
+      x-roles: [ADMIN]
+      responses:
+        '204': { description: "Đã xoá" }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Access token 15 phút. Refresh token nằm trong cookie httpOnly."
+  responses:
+    Unauthorized:
+      description: "Chưa xác thực hoặc token hết hạn"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error: { code: UNAUTHORIZED, message: "Phiên làm việc đã hết hạn." }
+    ForbiddenScope:
+      description: "Ngoài phạm vi được phép (chống IDOR)"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error: { code: FORBIDDEN_SCOPE, message: "Bạn không có quyền truy cập hồ sơ này." }
+    NotFound:
+      description: "Không tìm thấy tài nguyên"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error: { code: NOT_FOUND, message: "Không tìm thấy hồ sơ." }
+    ValidationError:
+      description: "Dữ liệu đầu vào không hợp lệ"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error:
+              code: VALIDATION_ERROR
+              message: "Vui lòng hoàn thiện các trường bắt buộc."
+              details: { truongThieu: ["Mục đích xác nhận", "Nơi nhận"] }
+    InvalidTransition:
+      description: "Trạng thái hiện tại không cho phép hành động"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error: { code: INVALID_TRANSITION, message: "Chỉ hồ sơ ở trạng thái Bản nháp mới có thể nộp." }
+    DuplicateAction:
+      description: "Cùng Idempotency-Key nhưng nội dung yêu cầu khác"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error: { code: DUPLICATE_ACTION, message: "Khoá idempotency đã dùng cho một yêu cầu khác." }
+    AlreadyProcessed:
+      description: "Bước đã được người khác xử lý xong"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error: { code: ALREADY_PROCESSED, message: "Hồ sơ đã được người khác xử lý ở bước hiện tại." }
+    MissingAttachment:
+      description: "Thiếu giấy tờ bắt buộc khi nộp"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error:
+              code: MISSING_ATTACHMENT
+              message: "Thiếu giấy tờ bắt buộc: Ảnh Căn cước công dân."
+              details: { giayToThieu: [cccd] }
+    OtpInvalid:
+      description: "Mã OTP nhập sai"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error: { code: OTP_INVALID, message: "Mã OTP không đúng. Bạn còn 3 lần thử.", details: { soLanConLai: 3 } }
+    OtpExpired:
+      description: "Phiên OTP hết hạn hoặc không tồn tại"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error: { code: OTP_EXPIRED, message: "Mã OTP đã hết hiệu lực. Vui lòng gửi lại mã mới." }
+    OtpLocked:
+      description: "Khoá tạm do nhập sai quá số lần"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error: { code: OTP_LOCKED, message: "Chức năng ký bị tạm khoá 15 phút.", details: { khoaDenLuc: "2026-10-16T10:15:00Z" } }
+    DocumentRevoked:
+      description: "Văn bản đã bị thu hồi"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error: { code: DOCUMENT_REVOKED, message: "Văn bản đã bị thu hồi nên không thể tải về." }
+    RateLimited:
+      description: "Vượt giới hạn tần suất"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            success: false
+            error: { code: VALIDATION_ERROR, message: "Bạn thao tác quá nhanh. Vui lòng thử lại sau." }
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: "Trang hiện tại, bắt đầu từ 1"
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: pageSize
+      in: query
+      description: "Số bản ghi mỗi trang"
+      schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+    TuKhoa:
+      name: tuKhoa
+      in: query
+      description: "Từ khoá tìm kiếm (không phân biệt dấu)"
+      schema: { type: string }
+    TrangThaiApp:
+      name: trangThai
+      in: query
+      schema:
+        oneOf:
+          - $ref: '#/components/schemas/ApplicationStatus'
+          - { type: string, enum: [ALL] }
+    TrangThaiDoc:
+      name: trangThai
+      in: query
+      schema:
+        oneOf:
+          - $ref: '#/components/schemas/DocumentStatus'
+          - { type: string, enum: [ALL] }
+    RequestTypeId:
+      name: requestTypeId
+      in: query
+      description: "UUID loại đơn"
+      schema: { type: string, format: uuid }
+    KhoaFilter:
+      name: khoa
+      in: query
+      description: "Mã hoặc tên khoa"
+      schema: { type: string }
+    LopFilter:
+      name: lop
+      in: query
+      description: "Mã hoặc tên lớp"
+      schema: { type: string }
+    HanXuLy:
+      name: hanXuLy
+      in: query
+      schema: { type: string, enum: [ALL, SAP_HET_HAN, QUA_HAN] }
+    SapXep:
+      name: sapXep
+      in: query
+      schema: { type: string, enum: [MOI_NHAT, CU_NHAT, HAN_GAN_NHAT] }
+    MaHoSo:
+      name: maHoSo
+      in: path
+      required: true
+      description: "Mã hồ sơ công khai, ví dụ MC-2026-000123"
+      schema: { type: string, pattern: '^MC-\d{4}-\d{6}$' }
+    Ma:
+      name: ma
+      in: path
+      required: true
+      description: "Mã nghiệp vụ (đọc được, unique). Backend cũng chấp nhận UUID nội bộ để tương thích ngược."
+      schema: { type: string }
+    MaSo:
+      name: maSo
+      in: path
+      required: true
+      description: "Mã số sinh viên/cán bộ (unique). Backend cũng chấp nhận UUID nội bộ để tương thích ngược."
+      schema: { type: string }
+    Id:
+      name: id
+      in: path
+      required: true
+      description: "UUID nội bộ của tài nguyên"
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: "Khoá chống thực hiện trùng. Gửi lại đúng yêu cầu cũ cùng khoá sẽ nhận lại kết quả ban đầu; cùng khoá khác nội dung trả 409 DUPLICATE_ACTION."
+      schema: { type: string, maxLength: 128 }
+    ChallengeId:
+      name: challengeId
+      in: path
+      required: true
+      schema: { type: string }
+    Token:
+      name: token
+      in: path
+      required: true
+      description: "Token xác thực, tối thiểu 128 bit"
+      schema: { type: string, minLength: 22 }
+    FileToken:
+      name: fileToken
+      in: path
+      required: true
+      description: "Token của liên kết tải có chữ ký"
+      schema: { type: string }
+    MessageId:
+      name: messageId
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: {}
+    PaginatedEnvelope:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { type: array, items: {} }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+    PaginationMeta:
+      type: object
+      required: [page, pageSize, total]
+      properties:
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1 }
+        total: { type: integer, minimum: 0 }
+      description: "Frontend tự suy ra totalPages = ceil(total / pageSize)."
+    ErrorResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success: { type: boolean, enum: [false] }
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { $ref: '#/components/schemas/ErrorCode' }
+            message: { type: string, description: "Thông điệp tiếng Việt hiển thị cho người dùng" }
+            details:
+              type: object
+              additionalProperties: true
+              description: "Dữ liệu bổ sung tùy lỗi (soLanConLai, khoaDenLuc, giayToThieu, truongThieu...)"
+    ErrorCode:
+      type: string
+      description: |
+        Mã lỗi nghiệp vụ. Ánh xạ HTTP: UNAUTHORIZED 401, FORBIDDEN_SCOPE 403, NOT_FOUND 404,
+        INVALID_TRANSITION 409, DUPLICATE_ACTION 409, ALREADY_PROCESSED 409,
+        VALIDATION_ERROR 422, MISSING_ATTACHMENT 422, OTP_INVALID 400,
+        OTP_EXPIRED 410, DOCUMENT_REVOKED 410, OTP_LOCKED 423.
+      enum:
+        - UNAUTHORIZED
+        - FORBIDDEN_SCOPE
+        - NOT_FOUND
+        - VALIDATION_ERROR
+        - INVALID_TRANSITION
+        - DUPLICATE_ACTION
+        - ALREADY_PROCESSED
+        - OTP_INVALID
+        - OTP_EXPIRED
+        - OTP_LOCKED
+        - MISSING_ATTACHMENT
+        - DOCUMENT_REVOKED
+        - NETWORK_ERROR
+        - UNKNOWN
+    Role:
+      type: string
+      enum: [SINH_VIEN, CO_VAN, TRUONG_KHOA, PHONG_DAO_TAO, ADMIN]
+    UserStatus:
+      type: string
+      enum: [ACTIVE, LOCKED]
+    Gender:
+      type: string
+      enum: [NAM, NU, KHAC]
+    ApplicationStatus:
+      type: string
+      enum: [DRAFT, SUBMITTED, PENDING_APPROVAL, NEED_SUPPLEMENT, REJECTED, COMPLETED, CANCELLED]
+    ApprovalMode:
+      type: string
+      enum: [ONE_CLICK, OTP]
+    DocumentStatus:
+      type: string
+      enum: [VALID, REVOKED, INVALID]
+    SignatureMethod:
+      type: string
+      enum: [OTP, ELECTRONIC]
+    ApprovalActionType:
+      type: string
+      enum: [SUBMIT, APPROVE, REJECT, REQUEST_SUPPLEMENT, SUPPLEMENT, CANCEL, ISSUE_DOCUMENT, REVOKE_DOCUMENT]
+    NotificationType:
+      type: string
+      enum: [INFO, SUCCESS, WARNING, DANGER]
+    FieldType:
+      type: string
+      enum: [text, textarea, number, date, select, radio, checkbox, email, phone, upload]
+    RequestTypeGroup:
+      type: string
+      enum:
+        - "Giấy xác nhận & Bảng điểm"
+        - "Học vụ & Thi cử"
+        - "Nguyện vọng & Chuyển ngành"
+        - "Tốt nghiệp & Bằng cấp"
+    User:
+      type: object
+      required: [id, maSo, hoTen, email, role, trangThai]
+      properties:
+        id: { type: string, format: uuid, description: "UUID nội bộ" }
+        maSo: { type: string, description: "Mã số sinh viên/cán bộ (unique)" }
+        hoTen: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+        avatarUrl: { type: string }
+        soDienThoai: { type: string }
+        ngaySinh: { type: string, format: date }
+        gioiTinh: { $ref: '#/components/schemas/Gender' }
+        chucVu: { type: string }
+        donViId: { type: string, format: uuid }
+        donViTen: { type: string }
+        lopId: { type: string, format: uuid }
+        lopTen: { type: string }
+        nganhTen: { type: string }
+        khoaHoc: { type: string }
+        trangThai: { $ref: '#/components/schemas/UserStatus' }
+    UserInput:
+      type: object
+      required: [maSo, hoTen, email, role, trangThai]
+      properties:
+        maSo: { type: string }
+        hoTen: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+        soDienThoai: { type: string }
+        ngaySinh: { type: string, format: date }
+        gioiTinh: { $ref: '#/components/schemas/Gender' }
+        chucVu: { type: string }
+        donViId: { type: string, format: uuid }
+        lopId: { type: string, format: uuid }
+        trangThai: { $ref: '#/components/schemas/UserStatus' }
+    LoginPayload:
+      type: object
+      required: [dinhDanh, matKhau]
+      properties:
+        dinhDanh: { type: string, description: "Mã số hoặc email" }
+        matKhau: { type: string, format: password, minLength: 6 }
+    Session:
+      type: object
+      required: [token, user, hetHan]
+      properties:
+        token: { type: string, description: "Access token JWT (15 phút)" }
+        user: { $ref: '#/components/schemas/User' }
+        hetHan: { type: string, format: date-time }
+    SessionEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties: { data: { $ref: '#/components/schemas/Session' } }
+    StudentSummary:
+      type: object
+      required: [id, maSo, hoTen, lop, khoa, nganh, khoaHoc, email]
+      properties:
+        id: { type: string, format: uuid }
+        maSo: { type: string }
+        hoTen: { type: string }
+        lop: { type: string }
+        khoa: { type: string }
+        nganh: { type: string }
+        khoaHoc: { type: string }
+        email: { type: string, format: email }
+        soDienThoai: { type: string }
+        coVanId: { type: string, format: uuid }
+        coVanTen: { type: string }
+    Attachment:
+      type: object
+      required: [id, ten, loai, kichThuoc, url, uploadedAt]
+      properties:
+        id: { type: string, format: uuid }
+        ten: { type: string }
+        loai: { type: string, description: "MIME type" }
+        kichThuoc: { type: integer, description: "Bytes" }
+        url: { type: string, description: "Liên kết tải ngắn hạn (không công khai trực tiếp)" }
+        uploadedAt: { type: string, format: date-time }
+        nguoiTaiLen: { type: string }
+        requirementKey: { type: string, description: "Khớp AttachmentRequirement.key nếu là giấy tờ bắt buộc" }
+    SupplementRequest:
+      type: object
+      required: [noiDung, boiAiId, boiAiTen, luc, daBoSung, quayVeBuocOrder]
+      properties:
+        noiDung: { type: string }
+        boiAiId: { type: string, format: uuid }
+        boiAiTen: { type: string }
+        luc: { type: string, format: date-time }
+        daBoSung: { type: boolean }
+        quayVeBuocOrder: { type: integer, description: "Bước đã yêu cầu bổ sung" }
+    ApprovalAction:
+      type: object
+      required: [id, applicationId, buocOrder, hanhDong, nguoiThucHienId, nguoiThucHienTen, vaiTro, luc]
+      properties:
+        id: { type: string, format: uuid }
+        applicationId: { type: string, format: uuid }
+        buocOrder: { type: integer, description: "0 = do sinh viên thực hiện" }
+        hanhDong: { $ref: '#/components/schemas/ApprovalActionType' }
+        nguoiThucHienId: { type: string, format: uuid }
+        nguoiThucHienTen: { type: string }
+        chucVu: { type: string }
+        vaiTro: { $ref: '#/components/schemas/Role' }
+        ghiChu: { type: string }
+        lyDo: { type: string }
+        phuongThuc: { $ref: '#/components/schemas/ApprovalMode' }
+        luc: { type: string, format: date-time }
+        signatureId: { type: string, format: uuid }
+    Signature:
+      type: object
+      required: [id, applicationId, buocOrder, tenBuoc, nguoiKyId, hoTen, chucVu, vaiTro, phuongThuc, thoiDiemKy, maBam, maChuKy, hopLe]
+      properties:
+        id: { type: string, format: uuid }
+        applicationId: { type: string, format: uuid }
+        vanBanId: { type: string, format: uuid }
+        buocOrder: { type: integer }
+        tenBuoc: { type: string }
+        nguoiKyId: { type: string, format: uuid }
+        hoTen: { type: string }
+        chucVu: { type: string }
+        vaiTro: { $ref: '#/components/schemas/Role' }
+        phuongThuc: { $ref: '#/components/schemas/SignatureMethod' }
+        thoiDiemKy: { type: string, format: date-time }
+        maBam: { type: string, description: "SHA-256 nội dung hồ sơ tại thời điểm ký" }
+        maChuKy: { type: string, description: "8 ký tự đầu của mã băm" }
+        hopLe: { type: boolean }
+        lyDoKhongHopLe: { type: string }
+    Application:
+      type: object
+      required: [id, maHoSo, requestTypeId, requestType, sinhVienId, sinhVien, trangThai, duLieu, tepDinhKem, workflowId, currentStepOrder, tongSoBuoc, buocDaDuyet, lichSu, ngayTao, ngayCapNhat]
+      properties:
+        id: { type: string, format: uuid, description: "UUID nội bộ" }
+        maHoSo: { type: string, description: "Mã hồ sơ công khai, dùng cho route /don/:ma" }
+        requestTypeId: { type: string, format: uuid }
+        requestType:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            ma: { type: string }
+            ten: { type: string }
+            nhom: { type: string }
+            icon: { type: string }
+            mau: { type: string }
+        sinhVienId: { type: string, format: uuid }
+        sinhVien: { $ref: '#/components/schemas/StudentSummary' }
+        trangThai: { $ref: '#/components/schemas/ApplicationStatus' }
+        duLieu: { type: object, additionalProperties: true, description: "Snapshot dữ liệu biểu mẫu (JSONB)" }
+        tepDinhKem:
+          type: array
+          items: { $ref: '#/components/schemas/Attachment' }
+        workflowId: { type: string, format: uuid }
+        currentStepOrder: { type: integer }
+        buocHienTai: { oneOf: [{ $ref: '#/components/schemas/WorkflowStep' }, { type: 'null' }] }
+        tongSoBuoc: { type: integer }
+        buocDaDuyet: { type: integer }
+        lichSu:
+          type: array
+          items: { $ref: '#/components/schemas/ApprovalAction' }
+        ngayTao: { type: string, format: date-time }
+        ngayNop: { type: string, format: date-time }
+        ngayCapNhat: { type: string, format: date-time }
+        hanXuLy: { type: string, format: date-time }
+        ngayHoanThanh: { type: string, format: date-time }
+        lyDoTuChoi: { type: string }
+        yeuCauBoSung: { $ref: '#/components/schemas/SupplementRequest' }
+        vanBanId: { type: string, format: uuid }
+        tokenXacThuc: { type: string }
+        soVanBan: { type: string }
+    ApplicationDetail:
+      allOf:
+        - $ref: '#/components/schemas/Application'
+        - type: object
+          required: [workflow, requestTypeFull]
+          properties:
+            workflow: { $ref: '#/components/schemas/Workflow' }
+            requestTypeFull: { $ref: '#/components/schemas/RequestType' }
+    CreateApplicationPayload:
+      type: object
+      required: [requestTypeId, duLieu, tepDinhKem]
+      properties:
+        requestTypeId: { type: string, format: uuid }
+        duLieu: { type: object, additionalProperties: true }
+        tepDinhKem:
+          type: array
+          items: { $ref: '#/components/schemas/Attachment' }
+    SupplementInput:
+      type: object
+      properties:
+        duLieu: { type: object, additionalProperties: true }
+        tepDinhKem:
+          type: array
+          items: { $ref: '#/components/schemas/Attachment' }
+        ghiChu: { type: string, maxLength: 2000 }
+    ApproveInput:
+      type: object
+      required: [maHoSo]
+      properties:
+        maHoSo: { type: string }
+        ghiChu: { type: string, maxLength: 2000 }
+        challengeId: { type: string, description: "Bắt buộc khi bước ở chế độ OTP" }
+        otp: { type: string, pattern: '^\d{6}$', description: "Bắt buộc khi bước ở chế độ OTP" }
+    BatchApproveResult:
+      type: object
+      required: [thanhCong, thatBai]
+      properties:
+        thanhCong:
+          type: array
+          items: { type: string }
+        thatBai:
+          type: array
+          items:
+            type: object
+            required: [maHoSo, maLoi, lyDo]
+            properties:
+              maHoSo: { type: string }
+              maLoi: { type: string }
+              lyDo: { type: string }
+    MyStats:
+      type: object
+      required: [nhap, dangXuLy, canBoSung, hoanThanh, tong]
+      properties:
+        nhap: { type: integer }
+        dangXuLy: { type: integer }
+        canBoSung: { type: integer }
+        hoanThanh: { type: integer }
+        tong: { type: integer }
+    ApprovalStats:
+      type: object
+      required: [choToiDuyet, sapHetHan, quaHan, daXuLyTuanNay, theoTrangThai, theoLoaiDon, theoKhoa, xuHuong7Ngay]
+      properties:
+        choToiDuyet: { type: integer }
+        sapHetHan: { type: integer }
+        quaHan: { type: integer }
+        daXuLyTuanNay: { type: integer }
+        theoTrangThai:
+          type: array
+          items:
+            type: object
+            required: [trangThai, nhan, soLuong]
+            properties:
+              trangThai: { $ref: '#/components/schemas/ApplicationStatus' }
+              nhan: { type: string }
+              soLuong: { type: integer }
+        theoLoaiDon:
+          type: array
+          items:
+            type: object
+            properties:
+              ten: { type: string }
+              soLuong: { type: integer }
+        theoKhoa:
+          type: array
+          items:
+            type: object
+            properties:
+              ten: { type: string }
+              soLuong: { type: integer }
+        xuHuong7Ngay:
+          type: array
+          items:
+            type: object
+            required: [ngay, nop, duyet]
+            properties:
+              ngay: { type: string }
+              nop: { type: integer }
+              duyet: { type: integer }
+    FieldOption:
+      type: object
+      required: [label, value]
+      properties:
+        label: { type: string }
+        value: { type: string }
+    FormField:
+      type: object
+      required: [id, key, label, type, required, order]
+      properties:
+        id: { type: string }
+        key: { type: string }
+        label: { type: string }
+        type: { $ref: '#/components/schemas/FieldType' }
+        placeholder: { type: string }
+        helpText: { type: string }
+        required: { type: boolean }
+        options:
+          type: array
+          items: { $ref: '#/components/schemas/FieldOption' }
+        defaultValue: {}
+        min: { type: number }
+        max: { type: number }
+        rows: { type: integer }
+        accept: { type: string }
+        maxSizeMb: { type: number }
+        width: { type: string, enum: [full, half] }
+        order: { type: integer }
+        readOnly: { type: boolean }
+    AttachmentRequirement:
+      type: object
+      required: [key, label, batBuoc]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        batBuoc: { type: boolean }
+        accept: { type: string }
+        helpText: { type: string }
+    RequestType:
+      type: object
+      required: [id, ma, ten, nhom, moTa, icon, mau, formFields, giayTo, workflowId, templateId, soNgayXuLy, lePhi, hoatDong]
+      properties:
+        id: { type: string, format: uuid }
+        ma: { type: string, description: "Mã nghiệp vụ unique, ví dụ GXN" }
+        ten: { type: string }
+        nhom: { $ref: '#/components/schemas/RequestTypeGroup' }
+        moTa: { type: string }
+        icon: { type: string, description: "Tên icon lucide-react" }
+        mau: { type: string, enum: [brand, emerald, amber, violet, rose] }
+        formFields:
+          type: array
+          items: { $ref: '#/components/schemas/FormField' }
+        giayTo:
+          type: array
+          items: { $ref: '#/components/schemas/AttachmentRequirement' }
+        workflowId: { type: string, format: uuid }
+        workflowMa: { type: string, description: "Mã luồng duyệt - dùng dựng URL /workflows/{ma}" }
+        templateId: { type: string, format: uuid }
+        templateMa: { type: string, description: "Mã mẫu văn bản - dùng dựng URL /templates/{ma}" }
+        soNgayXuLy: { type: integer }
+        lePhi: { type: integer, description: "VNĐ, 0 = miễn phí" }
+        hoatDong: { type: boolean }
+        soLuotNop: { type: integer }
+    RequestTypeInput:
+      type: object
+      required: [ma, ten, nhom, moTa, icon, mau, formFields, giayTo, workflowId, templateId, soNgayXuLy, lePhi, hoatDong]
+      properties:
+        ma: { type: string }
+        ten: { type: string }
+        nhom: { $ref: '#/components/schemas/RequestTypeGroup' }
+        moTa: { type: string }
+        icon: { type: string }
+        mau: { type: string, enum: [brand, emerald, amber, violet, rose] }
+        formFields:
+          type: array
+          items: { $ref: '#/components/schemas/FormField' }
+        giayTo:
+          type: array
+          items: { $ref: '#/components/schemas/AttachmentRequirement' }
+        workflowId: { type: string, format: uuid }
+        templateId: { type: string, format: uuid }
+        soNgayXuLy: { type: integer }
+        lePhi: { type: integer }
+        hoatDong: { type: boolean }
+    RequestTypeStat:
+      type: object
+      required: [requestTypeId, ten, ma, soLuong]
+      properties:
+        requestTypeId: { type: string, format: uuid }
+        ten: { type: string }
+        ma: { type: string }
+        soLuong: { type: integer }
+    WorkflowStep:
+      type: object
+      required: [id, order, ten, role, mode, slaHours, allowReject, allowSupplement]
+      properties:
+        id: { type: string, format: uuid }
+        order: { type: integer, minimum: 1 }
+        ten: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        mode: { $ref: '#/components/schemas/ApprovalMode' }
+        slaHours: { type: integer, minimum: 1 }
+        allowReject: { type: boolean }
+        allowSupplement: { type: boolean }
+        moTa: { type: string }
+    Workflow:
+      type: object
+      required: [id, ma, ten, requestTypeIds, steps, hoatDong, capDo]
+      properties:
+        id: { type: string, format: uuid }
+        ma: { type: string, description: "Mã nghiệp vụ unique, ví dụ WF-01" }
+        ten: { type: string }
+        requestTypeIds:
+          type: array
+          items: { type: string, format: uuid }
+        requestTypeMas:
+          type: array
+          items: { type: string }
+          description: "Mã các loại đơn áp dụng - dùng dựng URL /request-types/{ma}"
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/WorkflowStep' }
+        hoatDong: { type: boolean }
+        capDo: { type: integer, enum: [1, 2, 3] }
+    WorkflowInput:
+      type: object
+      required: [ma, ten, steps, hoatDong]
+      properties:
+        ma: { type: string }
+        ten: { type: string }
+        requestTypeIds:
+          type: array
+          items: { type: string, format: uuid }
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/WorkflowStep' }
+        hoatDong: { type: boolean }
+    WorkflowValidation:
+      type: object
+      required: [hopLe, canhBao]
+      properties:
+        hopLe: { type: boolean }
+        canhBao:
+          type: array
+          items: { type: string }
+    DocumentTemplate:
+      type: object
+      required: [id, ma, ten, loaiVanBan, noiDung, hoatDong, capNhatLuc]
+      properties:
+        id: { type: string, format: uuid }
+        ma: { type: string, description: "Mã nghiệp vụ unique, ví dụ MVT-GXN" }
+        ten: { type: string }
+        loaiVanBan: { type: string }
+        noiDung: { type: string, description: "Nội dung có biến dạng {{ho_ten}}, {{mssv}}, {{so_van_ban}}..." }
+        hoatDong: { type: boolean }
+        capNhatLuc: { type: string, format: date-time }
+    DocumentTemplateInput:
+      type: object
+      required: [ma, ten, loaiVanBan, noiDung, hoatDong]
+      properties:
+        ma: { type: string }
+        ten: { type: string }
+        loaiVanBan: { type: string }
+        noiDung: { type: string }
+        hoatDong: { type: boolean }
+    DocumentDownloadLog:
+      type: object
+      required: [id, luc, nguoiTai, diaChiIp]
+      properties:
+        id: { type: string, format: uuid }
+        luc: { type: string, format: date-time }
+        nguoiTai: { type: string }
+        diaChiIp: { type: string }
+    SignedDocument:
+      type: object
+      required: [id, soVanBan, trichYeu, loaiVanBan, templateId, applicationId, maHoSo, sinhVien, noiDung, ngayCap, tokenXacThuc, maBamSha256, chuKy, trangThai, chuKyConHieuLuc, luotTai]
+      properties:
+        id: { type: string, format: uuid }
+        soVanBan: { type: string, description: "Số văn bản, ví dụ 132/GXN-DHTB" }
+        trichYeu: { type: string }
+        loaiVanBan: { type: string }
+        templateId: { type: string, format: uuid }
+        applicationId: { type: string, format: uuid }
+        maHoSo: { type: string }
+        sinhVien:
+          type: object
+          required: [hoTen, mssv, lop, khoa, nganh, khoaHoc]
+          properties:
+            hoTen: { type: string }
+            mssv: { type: string }
+            lop: { type: string }
+            khoa: { type: string }
+            nganh: { type: string }
+            khoaHoc: { type: string }
+        noiDung: { type: string, description: "HTML nội dung A4" }
+        ngayCap: { type: string, format: date-time }
+        tokenXacThuc: { type: string, description: "Token dùng cho đường dẫn /xac-thuc/:token, tối thiểu 128 bit" }
+        maBamSha256: { type: string, pattern: '^[a-f0-9]{64}$', description: "SHA-256 của tệp PDF nhị phân" }
+        chuKy:
+          type: array
+          items: { $ref: '#/components/schemas/Signature' }
+        trangThai: { $ref: '#/components/schemas/DocumentStatus' }
+        chuKyConHieuLuc: { type: boolean }
+        lyDoThuHoi: { type: string }
+        ngayThuHoi: { type: string, format: date-time }
+        luotTai:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentDownloadLog' }
+    PublicSignedDocument:
+      description: "Văn bản công khai - họ tên và MSSV ĐÃ ĐƯỢC CHE Ở MÁY CHỦ (ví dụ \"Nguyễn V** A\", \"2021***\"). Không kèm id nội bộ, applicationId, maHoSo, noiDung HTML, lịch sử tải, email hay số điện thoại."
+      type: object
+      required: [soVanBan, trichYeu, loaiVanBan, ngayCap, tokenXacThuc, maBamSha256, chuKy, trangThai, chuKyConHieuLuc]
+      properties:
+        soVanBan: { type: string }
+        trichYeu: { type: string }
+        loaiVanBan: { type: string }
+        sinhVien:
+          type: object
+          properties:
+            hoTen: { type: string, description: "Đã che, ví dụ Nguyễn V** A" }
+            mssv: { type: string, description: "Đã che, ví dụ 2021***" }
+            lop: { type: string }
+            khoa: { type: string }
+            nganh: { type: string }
+            khoaHoc: { type: string }
+        ngayCap: { type: string, format: date-time }
+        tokenXacThuc: { type: string, description: "Token công khai in trên mã QR - dùng cho endpoint đối chiếu mã băm" }
+        maBamSha256: { type: string }
+        chuKy:
+          type: array
+          items: { $ref: '#/components/schemas/Signature' }
+        trangThai: { $ref: '#/components/schemas/DocumentStatus' }
+        chuKyConHieuLuc: { type: boolean }
+        lyDoThuHoi: { type: string }
+    VerifyResult:
+      type: object
+      required: [trangThai, vanBan]
+      properties:
+        trangThai: { $ref: '#/components/schemas/DocumentStatus' }
+        vanBan: { $ref: '#/components/schemas/PublicSignedDocument' }
+        ketQuaDoiChieu:
+          type: object
+          required: [maBamNguoiDung, trungKhop, luc]
+          properties:
+            maBamNguoiDung: { type: string }
+            trungKhop: { type: boolean }
+            luc: { type: string, format: date-time }
+    ExportedFile:
+      description: "Mô tả tệp xuất. KHÔNG chứa nội dung tệp; chỉ có liên kết tải có chữ ký."
+      type: object
+      required: [ten, mime, url]
+      properties:
+        ten: { type: string }
+        mime: { type: string }
+        url: { type: string, description: "Liên kết tải có chữ ký, hết hạn sau 5 phút, gắn với người dùng đã yêu cầu" }
+        hetHanLuc: { type: string, format: date-time, description: "Thời điểm liên kết hết hạn" }
+    LibraryItem:
+      type: object
+      required: [id, ten, nhom, moTa, loaiTep, kichThuoc, capNhatLuc, luotTai, url]
+      properties:
+        id: { type: string }
+        ten: { type: string }
+        nhom: { type: string }
+        moTa: { type: string }
+        loaiTep: { type: string, enum: [pdf, docx, doc, xlsx, xls] }
+        kichThuoc: { type: string }
+        capNhatLuc: { type: string, format: date-time }
+        luotTai: { type: integer }
+        url: { type: string }
+        batBuocVoiLoaiDon:
+          type: array
+          items: { type: string }
+    LibraryDownload:
+      type: object
+      required: [ten, mime, url]
+      properties:
+        ten: { type: string }
+        mime: { type: string }
+        url: { type: string }
+        noiDung: { type: string }
+    Notification:
+      type: object
+      required: [id, tieuDe, noiDung, loai, nguoiNhanId, daDoc, luc]
+      properties:
+        id: { type: string, format: uuid }
+        tieuDe: { type: string }
+        noiDung: { type: string }
+        loai: { $ref: '#/components/schemas/NotificationType' }
+        nguoiNhanId: { type: string, format: uuid }
+        applicationId: { type: string, format: uuid }
+        maHoSo: { type: string }
+        daDoc: { type: boolean }
+        luc: { type: string, format: date-time }
+        lienKet: { type: string }
+    AuditLog:
+      type: object
+      required: [id, luc, nguoiThucHienId, nguoiThucHienTen, vaiTro, hanhDong, doiTuong, doiTuongId, diaChiIp, thietBi]
+      properties:
+        id: { type: string, format: uuid }
+        luc: { type: string, format: date-time }
+        nguoiThucHienId: { type: string, format: uuid }
+        nguoiThucHienTen: { type: string }
+        vaiTro: { $ref: '#/components/schemas/Role' }
+        hanhDong: { type: string, description: "Mã hành động, ví dụ APPROVE_APPLICATION" }
+        doiTuong: { type: string }
+        doiTuongId: { type: string }
+        giaTriTruoc: { type: string }
+        giaTriSau: { type: string }
+        diaChiIp: { type: string }
+        thietBi: { type: string }
+    OtpChallenge:
+      type: object
+      required: [challengeId, hetHanLuc, conLaiGiay, choGuiLaiGiay, soLanConLai]
+      properties:
+        challengeId: { type: string }
+        hetHanLuc: { type: string, format: date-time }
+        conLaiGiay: { type: integer }
+        choGuiLaiGiay: { type: integer }
+        soLanConLai: { type: integer }
+        khoaDenLuc: { type: string, format: date-time }
+      description: "KHÔNG chứa mã OTP. Mã chỉ lưu dạng băm ở máy chủ."
+    Delegation:
+      type: object
+      required: [id, nguoiUyQuyenId, nguoiUyQuyenTen, nguoiNhanId, nguoiNhanTen, vaiTro, tuNgay, denNgay, lyDo, hieuLuc, taoLuc]
+      properties:
+        id: { type: string, format: uuid }
+        nguoiUyQuyenId: { type: string, format: uuid }
+        nguoiUyQuyenTen: { type: string }
+        nguoiNhanId: { type: string, format: uuid }
+        nguoiNhanTen: { type: string }
+        vaiTro: { $ref: '#/components/schemas/Role' }
+        tuNgay: { type: string, format: date-time }
+        denNgay: { type: string, format: date-time }
+        lyDo: { type: string }
+        hieuLuc: { type: boolean }
+        taoLuc: { type: string, format: date-time }
+    DelegationInput:
+      type: object
+      required: [nguoiNhanId, vaiTro, tuNgay, denNgay, lyDo]
+      properties:
+        nguoiNhanId: { type: string, format: uuid }
+        vaiTro: { $ref: '#/components/schemas/Role' }
+        tuNgay: { type: string, format: date-time }
+        denNgay: { type: string, format: date-time }
+        lyDo: { type: string, maxLength: 1000 }
+    Khoa:
+      type: object
+      required: [id, ma, ten, vietTat]
+      properties:
+        id: { type: string, format: uuid }
+        ma: { type: string, description: "Mã nghiệp vụ unique, ví dụ CNTT" }
+        ten: { type: string }
+        vietTat: { type: string }
+        truongKhoaId: { type: string, format: uuid }
+    KhoaInput:
+      type: object
+      required: [ma, ten, vietTat]
+      properties:
+        ma: { type: string }
+        ten: { type: string }
+        vietTat: { type: string }
+        truongKhoaId: { type: string, format: uuid }
+    PhongBan:
+      type: object
+      required: [id, ma, ten, vietTat]
+      properties:
+        id: { type: string, format: uuid }
+        ma: { type: string }
+        ten: { type: string }
+        vietTat: { type: string }
+        truongPhongId: { type: string, format: uuid }
+    PhongBanInput:
+      type: object
+      required: [ma, ten, vietTat]
+      properties:
+        ma: { type: string }
+        ten: { type: string }
+        vietTat: { type: string }
+        truongPhongId: { type: string, format: uuid }
+    Nganh:
+      type: object
+      required: [id, ma, ten, khoaId, khoaHocIds]
+      properties:
+        id: { type: string, format: uuid }
+        ma: { type: string, description: "Mã nghiệp vụ nội bộ, giữ giá trị cũ của mock, ví dụ n_cntt" }
+        maChinhThuc:
+          type: [string, "null"]
+          description: "Mã ngành chính thức của Bộ GD&ĐT (ví dụ 7480201), duy nhất khi có giá trị"
+        ten: { type: string }
+        khoaId: { type: string, format: uuid }
+        khoaHocIds:
+          type: array
+          items: { type: string, format: uuid }
+    NganhInput:
+      type: object
+      required: [ma, ten, khoaId]
+      properties:
+        ma: { type: string }
+        maChinhThuc: { type: [string, "null"], description: "Mã ngành chính thức, không bắt buộc" }
+        ten: { type: string }
+        khoaId: { type: string, format: uuid }
+        khoaHocIds:
+          type: array
+          items: { type: string, format: uuid }
+    Lop:
+      type: object
+      required: [id, ma, ten, khoaId, nganhId, khoaHocId, coVanId, siSo]
+      properties:
+        id: { type: string, format: uuid }
+        ma: { type: string, description: "Mã lớp, ví dụ K19-CNTT1" }
+        ten: { type: string }
+        khoaId: { type: string, format: uuid }
+        nganhId: { type: string, format: uuid }
+        khoaHocId: { type: string, format: uuid }
+        coVanId: { type: string, format: uuid }
+        siSo: { type: integer }
+    LopInput:
+      type: object
+      required: [ma, ten, khoaId, nganhId, khoaHocId, coVanId, siSo]
+      properties:
+        ma: { type: string }
+        ten: { type: string }
+        khoaId: { type: string, format: uuid }
+        nganhId: { type: string, format: uuid }
+        khoaHocId: { type: string, format: uuid }
+        coVanId: { type: string, format: uuid }
+        siSo: { type: integer }
+    KhoaHoc:
+      type: object
+      required: [id, ma, ten, namBatDau, namKetThuc]
+      properties:
+        id: { type: string, format: uuid }
+        ma: { type: string, description: "Mã khóa, ví dụ K19" }
+        ten: { type: string }
+        namBatDau: { type: integer }
+        namKetThuc: { type: integer }
+    KhoaHocInput:
+      type: object
+      required: [ma, ten, namBatDau, namKetThuc]
+      properties:
+        ma: { type: string }
+        ten: { type: string }
+        namBatDau: { type: integer }
+        namKetThuc: { type: integer }
+    ReportRow:
+      type: object
+      required: [ten, soLuong, tyLe]
+      properties:
+        ten: { type: string }
+        soLuong: { type: integer }
+        tyLe: { type: number, description: "Phần trăm 0-100" }
+    AvgStepDuration:
+      type: object
+      required: [buoc, vaiTro, gioTrungBinh, soHoSo]
+      properties:
+        buoc: { type: string }
+        vaiTro: { type: string }
+        gioTrungBinh: { type: number }
+        soHoSo: { type: integer }
+    ReportOverview:
+      type: object
+      required: [tongHoSo, hoanThanh, dangXuLy, tuChoi, quaHan, tyLeDungHan, thoiGianXuLyTrungBinhGio, theoLoaiDon, theoKhoa, theoTrangThai, thoiGianTungBuoc, theoThang]
+      properties:
+        tongHoSo: { type: integer }
+        hoanThanh: { type: integer }
+        dangXuLy: { type: integer }
+        tuChoi: { type: integer }
+        quaHan: { type: integer }
+        tyLeDungHan: { type: number }
+        thoiGianXuLyTrungBinhGio: { type: number }
+        theoLoaiDon:
+          type: array
+          items: { $ref: '#/components/schemas/ReportRow' }
+        theoKhoa:
+          type: array
+          items: { $ref: '#/components/schemas/ReportRow' }
+        theoTrangThai:
+          type: array
+          items: { $ref: '#/components/schemas/ReportRow' }
+        thoiGianTungBuoc:
+          type: array
+          items: { $ref: '#/components/schemas/AvgStepDuration' }
+        theoThang:
+          type: array
+          items:
+            type: object
+            required: [thang, nop, hoanThanh]
+            properties:
+              thang: { type: string }
+              nop: { type: integer }
+              hoanThanh: { type: integer }
+    ReportRows:
+      type: object
+      required: [theoLoaiDon, theoKhoa, theoTrangThai, thoiGianTungBuoc]
+      properties:
+        theoLoaiDon:
+          type: array
+          items: { $ref: '#/components/schemas/ReportRow' }
+        theoKhoa:
+          type: array
+          items: { $ref: '#/components/schemas/ReportRow' }
+        theoTrangThai:
+          type: array
+          items: { $ref: '#/components/schemas/ReportRow' }
+        thoiGianTungBuoc:
+          type: array
+          items: { $ref: '#/components/schemas/AvgStepDuration' }
+    PublicVerifyResult:
+      $ref: '#/components/schemas/VerifyResult'
+    ChatSource:
+      type: object
+      required: [tenFile, trang, trichDoan]
+      properties:
+        tenFile: { type: string }
+        trang: { type: integer }
+        trichDoan: { type: string }
+    ChatFormSuggestion:
+      type: object
+      required: [requestTypeId, ten]
+      properties:
+        requestTypeId: { type: string, format: uuid }
+        ten: { type: string }
+    ChatChunk:
+      type: object
+      required: [loai]
+      properties:
+        loai: { type: string, enum: [token, nguon, xong] }
+        noiDung: { type: string }
+        nguon:
+          type: array
+          items: { $ref: '#/components/schemas/ChatSource' }
+        goiYForm: { $ref: '#/components/schemas/ChatFormSuggestion' }
+        traLoiDayDu: { type: string }
+        maLoi: { type: string }
