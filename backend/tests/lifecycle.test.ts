@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest'
+import { takeCapturedOtp } from '../src/modules/otp/channel'
 import {
   api,
   bearer,
@@ -159,9 +160,12 @@ describe('Mã lỗi OTP', () => {
       .set(bearer(approverSession.token))
       .send({ maHoSo: draft.maHoSo })
     expect(send.status).toBe(200)
-    // Ngoài production, mã OTP được trả về để kiểm thử/trình diễn.
-    expect(send.body.data.devOtp).toMatch(/^\d{6}$/)
+    // OTP KHÔNG bao giờ nằm trong response — chỉ đi qua kênh gửi (CAPTURE khi test).
+    expect(send.body.data.devOtp).toBeUndefined()
+    expect(send.body.data.otp).toBeUndefined()
     const challengeId = send.body.data.challengeId as string
+    const sentOtp = takeCapturedOtp(challengeId)
+    expect(sentOtp).toMatch(/^\d{6}$/)
 
     const wrong = await api()
       .post(`/api/v1/approvals/${draft.maHoSo}/approve`)
@@ -190,7 +194,7 @@ describe('Mã lỗi OTP', () => {
       .send({ maHoSo: draft.maHoSo })
     expect(resend.status).toBe(200)
     const freshId = resend.body.data.challengeId as string
-    const freshOtp = resend.body.data.devOtp as string
+    const freshOtp = takeCapturedOtp(freshId) as string
 
     await prisma.otpChallenge.update({
       where: { id: freshId },
@@ -210,11 +214,12 @@ describe('Mã lỗi OTP', () => {
       .post('/api/v1/otp/send')
       .set(bearer(approverSession.token))
       .send({ maHoSo: draft.maHoSo })
+    const okId = ok.body.data.challengeId as string
     const approved = await api()
       .post(`/api/v1/approvals/${draft.maHoSo}/approve`)
       .set(bearer(approverSession.token))
       .set('Idempotency-Key', idemKey())
-      .send({ challengeId: ok.body.data.challengeId, otp: ok.body.data.devOtp })
+      .send({ challengeId: okId, otp: takeCapturedOtp(okId) })
     expect(approved.status).toBe(200)
     expect(approved.body.data.lichSu.some((a: { phuongThuc?: string }) => a.phuongThuc === 'OTP')).toBe(
       true,

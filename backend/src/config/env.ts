@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 /** Chuỗi bí mật mặc định CHỈ dùng khi phát triển/kiểm thử — bị chặn ở production. */
 export const DEV_JWT_SECRET = 'dev-only-secret-khong-dung-o-production-0123456789'
+export const DEV_HMAC_SECRET = 'dev-only-hmac-secret-doi-o-production-0123456789'
 
 const boolFromEnv = (fallback: boolean) =>
   z
@@ -36,6 +37,39 @@ const schema = z.object({
 
   /** Số phút hiệu lực của liên kết tải văn bản có chữ ký. */
   SIGNED_URL_TTL_MINUTES: z.coerce.number().int().positive().default(5),
+
+  /* ------------------------------------------------------------------ *
+   * Giai đoạn 4 — chữ ký số
+   * ------------------------------------------------------------------ */
+
+  /** Nhà cung cấp chữ ký: INTERNAL_HMAC (mặc định, nội bộ) | RSA_SHA256 | EXTERNAL_CA. */
+  SIGNATURE_PROVIDER: z.enum(['INTERNAL_HMAC', 'RSA_SHA256', 'EXTERNAL_CA']).default('INTERNAL_HMAC'),
+  /** Bí mật HMAC để ký nội bộ — bắt buộc đổi ở production. */
+  SIGNATURE_HMAC_SECRET: z.string().min(16).default(DEV_HMAC_SECRET),
+  /** Khoá riêng RSA dạng PEM (cho phép viết \n). Bắt buộc khi SIGNATURE_PROVIDER=RSA_SHA256. */
+  SIGNATURE_RSA_PRIVATE_KEY: z.string().optional(),
+  /** Khoá công khai RSA dạng PEM; nếu trống sẽ suy ra từ khoá riêng. */
+  SIGNATURE_RSA_PUBLIC_KEY: z.string().optional(),
+
+  /* ------------------------------------------------------------------ *
+   * Giai đoạn 4 — kênh gửi OTP
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Kênh gửi OTP: CONSOLE (chỉ development — in ra console máy chủ) | CAPTURE (kiểm thử)
+   * | EMAIL/SMS (bắt buộc cấu hình thật) | NONE (từ chối gửi).
+   * Mặc định suy ra theo NODE_ENV.
+   */
+  OTP_CHANNEL: z.enum(['CONSOLE', 'CAPTURE', 'EMAIL', 'SMS', 'NONE']).optional(),
+
+  /* ------------------------------------------------------------------ *
+   * Giai đoạn 4 — job SLA
+   * ------------------------------------------------------------------ */
+
+  /** Bật/tắt job SLA chạy nền (đánh dấu quá hạn, nhắc trước hạn, leo thang). */
+  ENABLE_SLA_JOB: boolFromEnv(true),
+  /** Chu kỳ quét job SLA (giây). */
+  SLA_JOB_INTERVAL_SECONDS: z.coerce.number().int().positive().default(300),
 })
 
 const parsed = schema.safeParse(process.env)
@@ -55,12 +89,33 @@ export const isTest = env.NODE_ENV === 'test'
 
 /** Chặn khởi động ở production khi còn dùng bí mật mặc định. */
 export function assertProductionSecrets(): void {
-  if (isProduction && env.JWT_SECRET === DEV_JWT_SECRET) {
-    throw new Error(
-      'TỪ CHỐI KHỞI ĐỘNG: đang ở production nhưng JWT_SECRET vẫn là giá trị mặc định. ' +
-        'Hãy đặt JWT_SECRET ngẫu nhiên >= 32 ký tự.',
-    )
+  if (!isProduction) return
+
+  const loi: string[] = []
+  if (env.JWT_SECRET === DEV_JWT_SECRET) {
+    loi.push('JWT_SECRET ngẫu nhiên >= 32 ký tự')
   }
+  if (env.SIGNATURE_PROVIDER === 'INTERNAL_HMAC' && env.SIGNATURE_HMAC_SECRET === DEV_HMAC_SECRET) {
+    loi.push('SIGNATURE_HMAC_SECRET ngẫu nhiên >= 32 ký tự')
+  }
+  if (env.SIGNATURE_PROVIDER === 'RSA_SHA256' && !env.SIGNATURE_RSA_PRIVATE_KEY) {
+    loi.push('SIGNATURE_RSA_PRIVATE_KEY (PEM) khi dùng RSA_SHA256')
+  }
+  if (otpChannelName() === 'CONSOLE') {
+    loi.push('OTP_CHANNEL thật (EMAIL/SMS) thay vì CONSOLE ở production')
+  }
+
+  if (loi.length) {
+    throw new Error('TỪ CHỐI KHỞI ĐỘNG: production đang thiếu cấu hình — ' + loi.join('; ') + '.')
+  }
+}
+
+/** Tên kênh gửi OTP hiệu lực (suy ra theo NODE_ENV khi không khai báo). */
+export function otpChannelName(): 'CONSOLE' | 'CAPTURE' | 'EMAIL' | 'SMS' | 'NONE' {
+  if (env.OTP_CHANNEL) return env.OTP_CHANNEL
+  if (env.NODE_ENV === 'development') return 'CONSOLE'
+  if (env.NODE_ENV === 'test') return 'CAPTURE'
+  return 'NONE'
 }
 
 export const corsOrigins = env.CORS_ORIGINS.split(',')

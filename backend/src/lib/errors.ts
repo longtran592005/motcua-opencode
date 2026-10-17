@@ -15,6 +15,7 @@ export const ERROR_CODES = [
   'ALREADY_PROCESSED',
   'DUPLICATE_ACTION',
   'DOCUMENT_REVOKED',
+  'RATE_LIMITED',
   'UNKNOWN',
 ] as const
 
@@ -33,6 +34,7 @@ export const ERROR_HTTP: Record<ErrorCode, number> = {
   OTP_EXPIRED: 410,
   OTP_LOCKED: 423,
   DOCUMENT_REVOKED: 410,
+  RATE_LIMITED: 429,
   UNKNOWN: 500,
 }
 
@@ -72,6 +74,11 @@ export class AppError extends Error {
 
   static invalidTransition(message: string) {
     return new AppError('INVALID_TRANSITION', message)
+  }
+
+  /** Lỗi cấu hình phía máy chủ (503) — hợp đồng chưa có mã riêng nên dùng UNKNOWN. */
+  static configuration(message: string, details?: Record<string, unknown>) {
+    return new AppError('UNKNOWN', message, details, 503)
   }
 }
 

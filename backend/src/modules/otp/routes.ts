@@ -21,7 +21,7 @@ otpRouter.post(
     const user = requireUser(req)
     const { maHoSo } = req.body as { maHoSo: string }
     const app = await loadApplication(maHoSo)
-    const si = assertCanApprove(app, user)
+    const si = await assertCanApprove(app, user)
     if (si.mode !== 'OTP') {
       throw AppError.validation('Bước xử lý hiện tại không yêu cầu ký OTP.')
     }
@@ -31,6 +31,7 @@ otpRouter.post(
         userId: user.id,
         applicationId: app.id,
         stepOrder: si.stepOrder,
+        maHoSo: app.maHoSo,
       }),
     )
   }),

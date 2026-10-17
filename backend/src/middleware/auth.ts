@@ -55,6 +55,48 @@ export const authenticate: RequestHandler = (req, _res, next) => {
   })().catch(next)
 }
 
+/** Xác thực tuỳ chọn: nạp thông tin người dùng nếu có token hợp lệ, không chặn nếu không có. */
+export const authenticateOptional: RequestHandler = (req, _res, next) => {
+  void (async () => {
+    const token = bearerToken(req)
+    if (!token) return next()
+
+    try {
+      const payload = verifyAccessToken(token)
+      const user = await prisma.user.findFirst({
+        where: { id: payload.sub, deletedAt: null },
+        select: {
+          id: true,
+          maSo: true,
+          hoTen: true,
+          email: true,
+          role: true,
+          facultyId: true,
+          departmentId: true,
+          chucVu: true,
+          trangThai: true,
+        },
+      })
+      if (user && user.trangThai !== 'LOCKED') {
+        req.user = {
+          id: user.id,
+          maSo: user.maSo,
+          hoTen: user.hoTen,
+          email: user.email,
+          role: user.role,
+          facultyId: user.facultyId,
+          departmentId: user.departmentId,
+          chucVu: user.chucVu,
+        }
+      }
+    } catch {
+      // Bỏ qua nếu token không hợp lệ
+    }
+    next()
+  })().catch(next)
+}
+
+
 /** Chỉ cho phép các vai trò liệt kê truy cập (ADMIN không tự động vượt qua). */
 export function requireRole(...roles: Role[]): RequestHandler {
   return (req, _res, next) => {

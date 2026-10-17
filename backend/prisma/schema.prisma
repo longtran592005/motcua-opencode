@@ -297,6 +297,7 @@ model User {
   @@index([role])
   @@index([facultyId])
   @@index([deletedAt])
+  @@index([isDemo])
   isDemo   Boolean   @default(false) @map("is_demo")
 
   @@map("users")
@@ -430,6 +431,9 @@ model WorkflowStep {
   role            Role         @map("role")
   mode            ApprovalMode @map("mode")
   slaHours        Int          @default(48) @map("sla_hours")
+  nhacTruocGio    Int          @default(12) @map("nhac_truoc_gio") // nhắc trước hạn (giờ)
+  leoThangSauGio  Int          @default(24) @map("leo_thang_sau_gio") // leo thang sau khi quá hạn (giờ)
+  escalateTo      Role?        @map("escalate_to") // vai trò cấp trên nhận leo thang
   allowReject     Boolean      @default(true) @map("allow_reject")
   allowSupplement Boolean      @default(true) @map("allow_supplement")
   moTa            String?      @map("mo_ta")
@@ -466,6 +470,8 @@ model Application {
   ngayHoanThanh   DateTime?         @map("ngay_hoan_thanh")
   lyDoTuChoi      String?           @map("ly_do_tu_choi")
   yeuCauBoSung    Json?             @map("yeu_cau_bo_sung")
+  /** Ảnh chụp luồng duyệt tại thời điểm nộp — đổi workflow sau đó không ảnh hưởng đơn đang chạy. */
+  workflowSnapshot Json?            @map("workflow_snapshot")
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
   deletedAt       DateTime?         @map("deleted_at")
@@ -488,6 +494,7 @@ model Application {
   @@index([facultyId])
   @@index([createdAt])
   @@index([deletedAt])
+  @@index([isDemo])
   isDemo   Boolean   @default(false) @map("is_demo")
 
   @@map("applications")
@@ -520,7 +527,20 @@ model StepInstance {
   mode          ApprovalMode @map("mode")
   trangThai     StepStatus @default(PENDING) @map("trang_thai")
   assigneeId    String?    @map("assignee_id") @db.Uuid
+  /**
+   * Cấu hình bước được ĐÓNG BĂNG tại thời điểm nộp (ảnh chụp luồng).
+   * Sửa workflow sau đó không làm đổi các cột này của đơn đang chạy.
+   */
+  slaHours        Int      @default(48) @map("sla_hours")
+  nhacTruocGio    Int      @default(12) @map("nhac_truoc_gio")
+  leoThangSauGio  Int      @default(24) @map("leo_thang_sau_gio")
+  escalateTo      Role?    @map("escalate_to")
+  allowReject     Boolean  @default(true) @map("allow_reject")
+  allowSupplement Boolean  @default(true) @map("allow_supplement")
   slaDueAt      DateTime?  @map("sla_due_at")
+  daQuaHan      Boolean    @default(false) @map("da_qua_han")
+  nhacLuc       DateTime?  @map("nhac_luc") // đã nhắc trước hạn lúc
+  leoThangLuc   DateTime?  @map("leo_thang_luc") // đã leo thang lúc
   startedAt     DateTime?  @map("started_at")
   completedAt   DateTime?  @map("completed_at")
   createdAt     DateTime   @default(now()) @map("created_at")
@@ -533,6 +553,7 @@ model StepInstance {
 
   @@unique([applicationId, stepOrder])
   @@index([role, trangThai]) // há»™p thÆ° theo vai trĂ²
+  @@index([role, trangThai, slaDueAt], map: "step_instances_role_status_due_idx")
   @@index([assigneeId, trangThai])
   @@map("step_instances")
 }
@@ -623,6 +644,8 @@ model Signature {
   maChuKy         String          @map("ma_chu_ky")
   hopLe           Boolean         @default(true) @map("hop_le")
   lyDoKhongHopLe  String?         @map("ly_do_khong_hop_le")
+  /** Nhà cung cấp chữ ký đã ký (INTERNAL_HMAC | RSA_SHA256). */
+  provider        String?         @map("provider")
   createdAt       DateTime        @default(now()) @map("created_at")
 
   application Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
@@ -707,6 +730,7 @@ model SignedDocument {
   @@index([trangThai])
   @@index([ngayCap])
   @@index([deletedAt])
+  @@index([isDemo])
   isDemo   Boolean   @default(false) @map("is_demo")
 
   @@map("signed_documents")
@@ -855,4 +879,10 @@ model RefreshToken {
   @@index([userId])
   @@index([hetHan])
   @@map("refresh_tokens")
+}
+
+model ApplicationCodeYear {
+  nam Int @id
+
+  @@map("application_code_year")
 }

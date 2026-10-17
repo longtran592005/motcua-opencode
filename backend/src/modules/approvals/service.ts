@@ -2,8 +2,7 @@ import { Prisma } from '@prisma/client'
 import type { z } from 'zod'
 import { prisma } from '../../lib/prisma'
 import { AppError } from '../../lib/errors'
-import { sha256 } from '../../lib/crypto'
-import { assertInScope, scopeWhere } from '../../lib/scope'
+import { scopeWhere } from '../../lib/scope'
 import { recordAudit } from '../../lib/audit'
 import { notifyRole, pushNotification } from '../../lib/notify'
 import {
@@ -12,15 +11,22 @@ import {
   applicationInclude,
   type ApplicationRow,
 } from '../shared/dto'
-import { addHours, pickAssignee, stepAfter } from '../shared/workflow'
-import { consumeOtp } from '../otp/service'
-import { issueDocument } from '../documents/issuer'
+import {
+  actorOf,
+  assertCanApprove,
+  currentStepInstance,
+  transition,
+  type TransitionOutcome,
+} from '../workflow/engine'
+import { activeDelegationsReceived } from '../delegations/service'
 import { loadApplication, type Ctx } from '../applications/service'
 import type { applicationListQuery } from '../applications/schemas'
 import type { batchApproveBody } from './schemas'
 
 type ListQuery = z.infer<typeof applicationListQuery>
 type BatchBody = z.infer<typeof batchApproveBody>
+
+export { assertCanApprove }
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Bản nháp',
@@ -34,204 +40,59 @@ const STATUS_LABELS: Record<string, string> = {
 
 /* --------------------------- Quy tắc nghiệp vụ --------------------------- */
 
-function currentStepInstance(app: ApplicationRow) {
-  return app.stepInstances.find((s) => s.stepOrder === app.currentStepOrder) ?? null
-}
-
-/** Hồ sơ đang chờ chính người dùng này xử lý. */
-export function isWaitingAt(app: ApplicationRow, user: Express.AuthUser): boolean {
+/** Hồ sơ đang chờ chính người dùng này xử lý (vai trò, người được giao, ủy quyền, leo thang). */
+export function isWaitingAt(
+  app: ApplicationRow,
+  user: Express.AuthUser,
+  uyQuyenSet?: Set<string>,
+): boolean {
   if (app.trangThai !== 'PENDING_APPROVAL' && app.trangThai !== 'SUBMITTED') return false
   const si = currentStepInstance(app)
   if (!si) return false
   if (si.trangThai !== 'PENDING' && si.trangThai !== 'IN_PROGRESS') return false
-  return user.role === 'ADMIN' || si.role === user.role
+
+  if (user.role === 'ADMIN') return true
+  if (si.role === user.role) return true
+  if (si.assigneeId === user.id) return true
+  if (si.leoThangLuc && si.escalateTo === user.role) return true
+  if (si.assigneeId && uyQuyenSet?.has(`${si.assigneeId}:${si.role}`)) return true
+  return false
 }
 
-/**
- * Bốn điều kiện bắt buộc trước khi cho phép phê duyệt (theo mock + quyết định B1/B2):
- * phạm vi, trạng thái chờ duyệt, đúng cấp xử lý, bước chưa bị xử lý.
- */
-export function assertCanApprove(app: ApplicationRow, user: Express.AuthUser) {
-  assertInScope(app, user)
-  const waiting =
-    app.trangThai === 'PENDING_APPROVAL' ||
-    (app.trangThai === 'SUBMITTED' && app.currentStepOrder === 1)
-  if (!waiting) {
-    throw AppError.invalidTransition('Hồ sơ không ở trạng thái chờ duyệt nên không thể phê duyệt.')
+/** Tập ủy quyền còn hiệu lực mà người dùng đang nhận, dạng `nguoiUyQuyenId:vaiTro`. */
+export async function receivedDelegationKeys(userId: string): Promise<{
+  keys: Set<string>
+  fromIds: string[]
+}> {
+  const rows = await activeDelegationsReceived(userId)
+  return {
+    keys: new Set(rows.map((d) => `${d.nguoiUyQuyenId}:${d.vaiTro}`)),
+    fromIds: [...new Set(rows.map((d) => d.nguoiUyQuyenId))],
   }
-  const si = currentStepInstance(app)
-  if (!si) throw AppError.invalidTransition('Hồ sơ không có bước xử lý hiện tại.')
-  if (si.trangThai === 'APPROVED' || si.trangThai === 'REJECTED') {
-    throw new AppError('ALREADY_PROCESSED', 'Bước xử lý này đã được người khác xử lý.')
-  }
-  if (user.role !== 'ADMIN' && si.role !== user.role) {
-    throw AppError.forbidden('Hồ sơ này không thuộc cấp xử lý của bạn.')
-  }
-  return si
-}
-
-function createSignature(
-  tx: Prisma.TransactionClient,
-  params: {
-    app: ApplicationRow
-    stepOrder: number
-    tenBuoc: string
-    mode: 'ONE_CLICK' | 'OTP'
-    user: Express.AuthUser
-    now: Date
-  },
-) {
-  const { app, stepOrder, tenBuoc, mode, user, now } = params
-  const maBam = sha256(
-    `${app.maHoSo}|${stepOrder}|${user.id}|${JSON.stringify(app.duLieu ?? {})}|${now.toISOString()}`,
-  )
-  return tx.signature.create({
-    data: {
-      applicationId: app.id,
-      buocOrder: stepOrder,
-      tenBuoc,
-      nguoiKyId: user.id,
-      hoTen: user.hoTen,
-      chucVu: user.chucVu,
-      vaiTro: user.role,
-      phuongThuc: mode === 'OTP' ? 'OTP' : 'ELECTRONIC',
-      thoiDiemKy: now,
-      maBam,
-      maChuKy: maBam.slice(0, 8).toUpperCase(),
-      hopLe: true,
-    },
-  })
 }
 
 /* ------------------------------- Phê duyệt ------------------------------- */
 
-export async function approve(
+async function baoSauDuyet(
   ctx: Ctx,
-  input: { maHoSo: string; ghiChu?: string; challengeId?: string; otp?: string },
-  idempotencyKey?: string | null,
-) {
-  const app = await loadApplication(input.maHoSo)
-  const si = assertCanApprove(app, ctx.user)
-
-  if (si.mode === 'OTP') {
-    if (!input.challengeId || !input.otp) {
-      throw AppError.validation('Bước này yêu cầu ký OTP. Vui lòng gửi và nhập mã OTP.', {
-        truongThieu: ['challengeId', 'otp'],
-      })
-    }
-  }
-
-  const workflow = app.workflow!
-  const next = stepAfter(workflow.steps, si.stepOrder)
-  const assigneeId = next ? await pickAssignee(next, { classId: app.classId, facultyId: app.facultyId }) : null
-  const now = new Date()
-
-  const outcome = await prisma.$transaction(async (tx) => {
-    if (si.mode === 'OTP') {
-      await consumeOtp(tx, {
-        challengeId: input.challengeId!,
-        otp: input.otp!,
-        userId: ctx.user.id,
-        applicationId: app.id,
-        stepOrder: si.stepOrder,
-      })
-    }
-
-    const sig = await createSignature(tx, {
-      app,
-      stepOrder: si.stepOrder,
-      tenBuoc: si.ten,
-      mode: si.mode,
-      user: ctx.user,
-      now,
-    })
-
-    await tx.approval.create({
-      data: {
-        applicationId: app.id,
-        stepInstanceId: si.id,
-        buocOrder: si.stepOrder,
-        hanhDong: 'APPROVE',
-        actorId: ctx.user.id,
-        vaiTro: ctx.user.role,
-        chucVu: ctx.user.chucVu,
-        ghiChu: input.ghiChu ?? null,
-        phuongThuc: si.mode,
-        signatureId: sig.id,
-        idempotencyKey: idempotencyKey ?? null,
-      },
-    })
-    // "Chiếm" bước một cách nguyên tử: nếu người khác vừa xử lý xong (đổi trạng thái)
-    // thì câu lệnh này không khớp bản ghi nào → ALREADY_PROCESSED (quyết định B2).
-    const claimed = await tx.stepInstance.updateMany({
-      where: { id: si.id, trangThai: { in: ['PENDING', 'IN_PROGRESS'] } },
-      data: { trangThai: 'APPROVED', completedAt: now },
-    })
-    if (claimed.count === 0) {
-      throw new AppError('ALREADY_PROCESSED', 'Bước xử lý này đã được người khác xử lý.')
-    }
-
-    if (next) {
-      await tx.stepInstance.updateMany({
-        where: { applicationId: app.id, stepOrder: next.order },
-        data: {
-          trangThai: 'IN_PROGRESS',
-          assigneeId,
-          startedAt: now,
-          slaDueAt: addHours(now, next.slaHours),
-        },
-      })
-      await tx.application.update({
-        where: { id: app.id },
-        data: {
-          trangThai: 'PENDING_APPROVAL',
-          currentStepOrder: next.order,
-          buocDaDuyet: si.stepOrder,
-          hanXuLy: addHours(now, next.slaHours),
-        },
-      })
-      return { next, doc: null as null | { soVanBan: string } }
-    }
-
-    const doc = await issueDocument(tx, { app, now, actorId: ctx.user.id })
-    await tx.application.update({
-      where: { id: app.id },
-      data: {
-        trangThai: 'COMPLETED',
-        buocDaDuyet: si.stepOrder,
-        ngayHoanThanh: now,
-        hanXuLy: null,
-      },
-    })
-    await tx.approval.create({
-      data: {
-        applicationId: app.id,
-        buocOrder: workflow.steps.length,
-        hanhDong: 'ISSUE_DOCUMENT',
-        actorId: ctx.user.id,
-        vaiTro: ctx.user.role,
-        chucVu: ctx.user.chucVu,
-        ghiChu: `Cấp văn bản số ${doc.soVanBan}, ký số và sinh mã QR xác thực.`,
-      },
-    })
-    return { next: null, doc }
-  })
-
-  if (outcome.next) {
+  app: ApplicationRow,
+  outcome: TransitionOutcome,
+): Promise<void> {
+  if (outcome.buocKeTiep) {
     await pushNotification({
       nguoiNhanId: app.applicantId,
       tieuDe: 'Hồ sơ đã qua một cấp phê duyệt',
-      noiDung: `Hồ sơ ${app.maHoSo} đã được ${ctx.user.chucVu ?? ctx.user.hoTen} phê duyệt và chuyển tới bước "${outcome.next.ten}".`,
+      noiDung: `Hồ sơ ${app.maHoSo} đã được ${ctx.user.chucVu ?? ctx.user.hoTen} phê duyệt và chuyển tới bước "${outcome.buocKeTiep.ten}".`,
       loai: 'INFO',
       applicationId: app.id,
       maHoSo: app.maHoSo,
       lienKet: `/don/${app.maHoSo}`,
     })
     await notifyRole(
-      outcome.next.role,
+      outcome.buocKeTiep.role,
       {
         tieuDe: 'Có hồ sơ mới chờ bạn xử lý',
-        noiDung: `Hồ sơ ${app.maHoSo} của sinh viên ${app.applicant.hoTen} đã tới bước "${outcome.next.ten}".`,
+        noiDung: `Hồ sơ ${app.maHoSo} của sinh viên ${app.applicant.hoTen} đã tới bước "${outcome.buocKeTiep.ten}".`,
         loai: 'INFO',
         applicationId: app.id,
         maHoSo: app.maHoSo,
@@ -240,25 +101,57 @@ export async function approve(
       prisma,
       ctx.user.id,
     )
-  } else if (outcome.doc) {
+    return
+  }
+  if (outcome.vanBan) {
     await pushNotification({
       nguoiNhanId: app.applicantId,
       tieuDe: 'Văn bản đã được ký số và phát hành',
-      noiDung: `Hồ sơ ${app.maHoSo} đã hoàn thành. Văn bản số ${outcome.doc.soVanBan} đã được ký điện tử, bạn có thể tải về và in.`,
+      noiDung: `Hồ sơ ${app.maHoSo} đã hoàn thành. Văn bản số ${outcome.vanBan.soVanBan} đã được ký điện tử, bạn có thể tải về và in.`,
       loai: 'SUCCESS',
       applicationId: app.id,
       maHoSo: app.maHoSo,
       lienKet: `/don/${app.maHoSo}/van-ban`,
     })
   }
+}
+
+export async function approve(
+  ctx: Ctx,
+  input: { maHoSo: string; ghiChu?: string; challengeId?: string; otp?: string },
+  idempotencyKey?: string | null,
+) {
+  const app = await loadApplication(input.maHoSo)
+  // Kiểm tra sớm để báo lỗi rõ ràng; engine kiểm tra LẠI bên trong giao dịch.
+  const si = await assertCanApprove(app, ctx.user)
+  if (si.mode === 'OTP' && (!input.challengeId || !input.otp)) {
+    throw AppError.validation('Bước này yêu cầu ký OTP. Vui lòng gửi và nhập mã OTP.', {
+      truongThieu: ['challengeId', 'otp'],
+    })
+  }
+
+  const outcome = await transition({
+    action: 'APPROVE',
+    appId: app.id,
+    actor: actorOf(ctx.user),
+    ghiChu: input.ghiChu ?? null,
+    otp:
+      si.mode === 'OTP' && input.challengeId && input.otp
+        ? { challengeId: input.challengeId, ma: input.otp }
+        : null,
+    expectedStepOrder: si.stepOrder,
+    idempotencyKey: idempotencyKey ?? null,
+  })
+
+  await baoSauDuyet(ctx, app, outcome)
 
   await recordAudit({
     nguoiThucHien: ctx.user,
     hanhDong: 'APPROVE_APPLICATION',
     doiTuong: 'Hồ sơ một cửa',
     doiTuongId: app.maHoSo,
-    giaTriTruoc: `Bước ${si.stepOrder}: Đang chờ duyệt`,
-    giaTriSau: outcome.next ? `Chuyển bước ${outcome.next.order}` : 'Hoàn thành',
+    giaTriTruoc: `Bước ${outcome.buocOrder}: Đang chờ duyệt`,
+    giaTriSau: outcome.buocKeTiep ? `Chuyển bước ${outcome.buocKeTiep.order}` : 'Hoàn thành',
     diaChiIp: ctx.ip,
     thietBi: ctx.userAgent,
   })
@@ -268,37 +161,14 @@ export async function approve(
 
 export async function reject(ctx: Ctx, maHoSo: string, lyDo: string) {
   const app = await loadApplication(maHoSo)
-  const si = assertCanApprove(app, ctx.user)
-  if (si.workflowStep && !si.workflowStep.allowReject) {
-    throw AppError.invalidTransition('Bước duyệt này không cho phép từ chối hồ sơ.')
-  }
-  const now = new Date()
+  const si = await assertCanApprove(app, ctx.user)
 
-  await prisma.$transaction(async (tx) => {
-    await tx.approval.create({
-      data: {
-        applicationId: app.id,
-        stepInstanceId: si.id,
-        buocOrder: si.stepOrder,
-        hanhDong: 'REJECT',
-        actorId: ctx.user.id,
-        vaiTro: ctx.user.role,
-        chucVu: ctx.user.chucVu,
-        lyDo,
-      },
-    })
-    await tx.stepInstance.update({
-      where: { id: si.id },
-      data: { trangThai: 'REJECTED', completedAt: now },
-    })
-    await tx.stepInstance.updateMany({
-      where: { applicationId: app.id, trangThai: 'PENDING' },
-      data: { trangThai: 'SKIPPED', completedAt: now },
-    })
-    await tx.application.update({
-      where: { id: app.id },
-      data: { trangThai: 'REJECTED', lyDoTuChoi: lyDo, hanXuLy: null },
-    })
+  const outcome = await transition({
+    action: 'REJECT',
+    appId: app.id,
+    actor: actorOf(ctx.user),
+    lyDo,
+    expectedStepOrder: si.stepOrder,
   })
 
   await pushNotification({
@@ -321,50 +191,20 @@ export async function reject(ctx: Ctx, maHoSo: string, lyDo: string) {
     thietBi: ctx.userAgent,
   })
 
+  void outcome
   return applicationDetailDto(await loadApplication(app.id))
 }
 
 export async function requestSupplement(ctx: Ctx, maHoSo: string, noiDung: string) {
   const app = await loadApplication(maHoSo)
-  const si = assertCanApprove(app, ctx.user)
-  if (si.workflowStep && !si.workflowStep.allowSupplement) {
-    throw AppError.invalidTransition('Bước duyệt này không cho phép yêu cầu bổ sung.')
-  }
-  const now = new Date()
+  const si = await assertCanApprove(app, ctx.user)
 
-  await prisma.$transaction(async (tx) => {
-    await tx.approval.create({
-      data: {
-        applicationId: app.id,
-        stepInstanceId: si.id,
-        buocOrder: si.stepOrder,
-        hanhDong: 'REQUEST_SUPPLEMENT',
-        actorId: ctx.user.id,
-        vaiTro: ctx.user.role,
-        chucVu: ctx.user.chucVu,
-        lyDo: noiDung,
-      },
-    })
-    await tx.stepInstance.update({
-      where: { id: si.id },
-      data: { trangThai: 'PENDING', completedAt: null, startedAt: null, slaDueAt: null },
-    })
-    await tx.application.update({
-      where: { id: app.id },
-      data: {
-        trangThai: 'NEED_SUPPLEMENT',
-        currentStepOrder: 0,
-        hanXuLy: null,
-        yeuCauBoSung: {
-          noiDung,
-          boiAiId: ctx.user.id,
-          boiAiTen: ctx.user.hoTen,
-          luc: now.toISOString(),
-          daBoSung: false,
-          quayVeBuocOrder: si.stepOrder,
-        } as Prisma.InputJsonValue,
-      },
-    })
+  const outcome = await transition({
+    action: 'REQUEST_SUPPLEMENT',
+    appId: app.id,
+    actor: actorOf(ctx.user),
+    lyDo: noiDung,
+    expectedStepOrder: si.stepOrder,
   })
 
   await pushNotification({
@@ -382,11 +222,12 @@ export async function requestSupplement(ctx: Ctx, maHoSo: string, noiDung: strin
     doiTuong: 'Hồ sơ một cửa',
     doiTuongId: app.maHoSo,
     giaTriTruoc: 'Đang chờ duyệt',
-    giaTriSau: 'Cần bổ sung',
+    giaTriSau: `Cần bổ sung (quay về bước ${si.stepOrder})`,
     diaChiIp: ctx.ip,
     thietBi: ctx.userAgent,
   })
 
+  void outcome
   return applicationDetailDto(await loadApplication(app.id))
 }
 
@@ -415,16 +256,60 @@ function sortRows(rows: ApplicationRow[], query: ListQuery): ApplicationRow[] {
   return copy.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 }
 
+/** Tập hồ sơ mà người dùng được PHÉP THẤY khi xử lý: phạm vi gốc + việc giao đích danh. */
+function visibleWhere(user: Express.AuthUser): Prisma.ApplicationWhereInput {
+  return {
+    OR: [scopeWhere(user), { stepInstances: { some: { assigneeId: user.id } } }],
+  }
+}
+
+/** Tập hồ sơ có thể đang tới lượt người dùng xử lý (dùng cho hộp thư "Chờ tôi duyệt"). */
+function pendingWhere(user: Express.AuthUser, fromIds: string[]): Prisma.ApplicationWhereInput {
+  const phamVi: Prisma.ApplicationWhereInput[] = [
+    scopeWhere(user),
+    // Hồ sơ đang giao ĐÍCH DANH cho người dùng này (kể cả khi người dùng không
+    // thuộc phạm vi khoa/lớp của hồ sơ — ví dụ người nhận ủy quyền).
+    {
+      stepInstances: {
+        some: { assigneeId: user.id, trangThai: { in: ['PENDING', 'IN_PROGRESS'] } },
+      },
+    },
+  ]
+  if (fromIds.length) {
+    // Hồ sơ đang giao cho những người đã ủy quyền cho người dùng này.
+    phamVi.push({
+      stepInstances: {
+        some: {
+          assigneeId: { in: fromIds },
+          trangThai: { in: ['PENDING', 'IN_PROGRESS'] },
+        },
+      },
+    })
+  }
+  return phamVi.length === 1 ? phamVi[0] : { OR: phamVi }
+}
+
+/**
+ * Hộp thư "Chờ tôi duyệt". Lọc trong bộ nhớ (quyết định D8) vì điều kiện
+ * "đang tới lượt vai trò/người được giao ở bước hiện tại" không diễn đạt được
+ * bằng một mệnh đề WHERE thông thường. Phạm vi dữ liệu được mở rộng cho các
+ * hồ sơ đang giao cho người nhận ủy quyền.
+ */
 export async function listPending(user: Express.AuthUser, query: ListQuery) {
+  const { keys, fromIds } = await receivedDelegationKeys(user.id)
+
   const rows = await prisma.application.findMany({
     where: {
       deletedAt: null,
-      AND: [scopeWhere(user), { trangThai: { in: ['SUBMITTED', 'PENDING_APPROVAL'] } }],
+      AND: [
+        { trangThai: { in: ['SUBMITTED', 'PENDING_APPROVAL'] } },
+        pendingWhere(user, fromIds),
+      ],
     },
     include: applicationInclude,
   })
   const filtered = sortRows(
-    rows.filter((r) => isWaitingAt(r, user) && matchesFilters(r, query)),
+    rows.filter((r) => isWaitingAt(r, user, keys) && matchesFilters(r, query)),
     query,
   )
   const start = (query.page - 1) * query.pageSize
@@ -439,7 +324,16 @@ export async function listPending(user: Express.AuthUser, query: ListQuery) {
 export async function listProcessed(user: Express.AuthUser, query: ListQuery) {
   const where: Prisma.ApplicationWhereInput = {
     deletedAt: null,
-    AND: [scopeWhere(user), { approvals: { some: { actorId: user.id } } }],
+    AND: [
+      {
+        OR: [
+          scopeWhere(user),
+          // Người nhận ủy quyền đã xử lý hồ sơ ngoài phạm vi khoa/lớp của mình.
+          { approvals: { some: { actorId: user.id } } },
+        ],
+      },
+      { approvals: { some: { actorId: user.id } } },
+    ],
   }
   const [total, rows] = await Promise.all([
     prisma.application.count({ where }),
@@ -484,11 +378,12 @@ function groupCount(rows: ApplicationRow[], pick: (r: ApplicationRow) => string)
 }
 
 export async function statsApproval(user: Express.AuthUser) {
+  const { keys } = await receivedDelegationKeys(user.id)
   const scoped = await prisma.application.findMany({
-    where: { deletedAt: null, AND: [scopeWhere(user)] },
+    where: { deletedAt: null, AND: [visibleWhere(user)] },
     include: applicationInclude,
   })
-  const pending = scoped.filter((a) => isWaitingAt(a, user))
+  const pending = scoped.filter((a) => isWaitingAt(a, user, keys))
   const now = Date.now()
   const day = 86_400_000
 
@@ -528,6 +423,11 @@ export async function statsApproval(user: Express.AuthUser) {
   }
 }
 
+/**
+ * Duyệt hàng loạt: CHỈ áp cho bước `ONE_CLICK`. Mỗi đơn xử lý ĐỘC LẬP trong
+ * giao dịch riêng của nó — một đơn lỗi không ảnh hưởng các đơn còn lại, và
+ * kết quả trả về theo TỪNG đơn.
+ */
 export async function approveBatch(ctx: Ctx, body: BatchBody, idempotencyKey?: string | null) {
   const thanhCong: string[] = []
   const thatBai: { maHoSo: string; maLoi: string; lyDo: string }[] = []
@@ -535,7 +435,7 @@ export async function approveBatch(ctx: Ctx, body: BatchBody, idempotencyKey?: s
   for (const maHoSo of body.maHoSoList) {
     try {
       const app = await loadApplication(maHoSo)
-      const si = assertCanApprove(app, ctx.user)
+      const si = await assertCanApprove(app, ctx.user)
       if (si.mode !== 'ONE_CLICK') {
         throw AppError.validation('Bước này yêu cầu ký OTP nên không thể duyệt hàng loạt.')
       }

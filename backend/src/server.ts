@@ -3,6 +3,7 @@ import { createApp } from './app'
 import { logger } from './lib/logger'
 import { prisma } from './lib/prisma'
 import { purgeExpiredIdempotencyKeys } from './middleware/idempotency'
+import { runSlaJobSafe } from './modules/workflow/sla'
 
 assertProductionSecrets()
 
@@ -19,9 +20,17 @@ const cleanup = setInterval(() => {
   )
 }, 3_600_000)
 
+// Job SLA: nhắc trước hạn, đánh dấu quá hạn và leo thang lên cấp trên.
+const sla = env.ENABLE_SLA_JOB
+  ? setInterval(() => {
+      void runSlaJobSafe()
+    }, env.SLA_JOB_INTERVAL_SECONDS * 1000)
+  : null
+
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'Đang tắt máy chủ…')
   clearInterval(cleanup)
+  if (sla) clearInterval(sla)
   server.close(() => {
     void prisma.$disconnect().finally(() => process.exit(0))
   })

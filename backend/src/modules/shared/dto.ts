@@ -29,11 +29,11 @@ export const applicationInclude = {
       coVan: { select: { id: true, hoTen: true } },
     },
   },
-  workflow: { include: { steps: { orderBy: { order: 'asc' } }, requestTypes: { select: { id: true } } } },
+  workflow: { include: { steps: { orderBy: { order: 'asc' } }, requestTypes: { select: { id: true, ma: true } } } },
   stepInstances: { orderBy: { stepOrder: 'asc' }, include: { workflowStep: true } },
   attachments: { orderBy: { createdAt: 'asc' } },
   approvals: {
-    orderBy: { createdAt: 'asc' },
+    orderBy: [{ createdAt: 'asc' }, { buocOrder: 'asc' }],
     select: {
       id: true,
       applicationId: true,
@@ -145,7 +145,9 @@ export function workflowDto(wf: WorkflowRow) {
     id: wf.id,
     ma: wf.ma,
     ten: wf.ten,
+    version: wf.version,
     requestTypeIds: wf.requestTypes.map((r) => r.id),
+    requestTypeMas: wf.requestTypes.map((r) => r.ma),
     steps: wf.steps.map((s) => ({
       id: s.id,
       order: s.order,
@@ -153,6 +155,9 @@ export function workflowDto(wf: WorkflowRow) {
       role: s.role,
       mode: s.mode,
       slaHours: s.slaHours,
+      nhacTruocGio: s.nhacTruocGio,
+      leoThangSauGio: s.leoThangSauGio,
+      ...(s.escalateTo ? { escalateTo: s.escalateTo } : {}),
       allowReject: s.allowReject,
       allowSupplement: s.allowSupplement,
       ...(s.moTa ? { moTa: s.moTa } : {}),
@@ -194,9 +199,15 @@ function currentStepDto(app: ApplicationRow) {
     ten: si.ten,
     role: si.role,
     mode: si.mode,
-    slaHours: si.workflowStep?.slaHours ?? 48,
-    allowReject: si.workflowStep?.allowReject ?? true,
-    allowSupplement: si.workflowStep?.allowSupplement ?? true,
+    // Lấy từ cấu hình ĐÃ ĐÓNG BĂNG ở step_instances (không phải luồng sống).
+    slaHours: si.slaHours,
+    nhacTruocGio: si.nhacTruocGio,
+    leoThangSauGio: si.leoThangSauGio,
+    ...(si.escalateTo ? { escalateTo: si.escalateTo } : {}),
+    allowReject: si.allowReject,
+    allowSupplement: si.allowSupplement,
+    daQuaHan: si.daQuaHan,
+    ...(si.slaDueAt ? { slaDueAt: si.slaDueAt.toISOString() } : {}),
     ...((si.workflowStep?.moTa ?? null) ? { moTa: si.workflowStep!.moTa! } : {}),
   }
 }

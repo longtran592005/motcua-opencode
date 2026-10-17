@@ -26,12 +26,12 @@ import type {
 } from '../contracts/catalog'
 import type { AuditService, LibraryService, NotificationService } from '../contracts/system'
 import type { DocumentTemplate, RequestType, Workflow } from '@/types'
-import { createHttpService } from './client'
+import { createHttpService, setToken } from './client'
 
 const q = (v: ApplicationListQuery | DocumentListQuery | undefined) =>
   (v ?? {}) as Record<string, unknown>
 
-export const httpAuthService: AuthService = createHttpService<AuthService>({
+const rawAuthService: AuthService = createHttpService<AuthService>({
   login: { method: 'POST', path: () => '/auth/login', body: (p: LoginPayload) => p },
   quickLogin: {
     method: 'POST',
@@ -46,6 +46,27 @@ export const httpAuthService: AuthService = createHttpService<AuthService>({
     body: (patch: Partial<User>) => patch,
   },
 })
+
+export const httpAuthService: AuthService = {
+  ...rawAuthService,
+  async login(payload) {
+    const session = await rawAuthService.login(payload)
+    if (session?.token) setToken(session.token)
+    return session
+  },
+  async quickLogin(role) {
+    const session = await rawAuthService.quickLogin(role)
+    if (session?.token) setToken(session.token)
+    return session
+  },
+  async logout() {
+    try {
+      await rawAuthService.logout()
+    } finally {
+      setToken(null)
+    }
+  },
+}
 
 export const httpApplicationService: ApplicationService = createHttpService<ApplicationService>({
   listMine: { method: 'GET', path: () => '/applications/mine', query: (v: ApplicationListQuery) => q(v) },

@@ -20,6 +20,9 @@ coverage
 .env
 .env.*
 !.env.example
+!.env.test.example
+reports/
+*.dump
 
 # Python (rag-service)
 __pycache__/

@@ -1,14 +1,34 @@
 # Docker Compose — Cổng Một cửa điện tử Trường Đại học Thái Bình
 #
-# GIAI ĐOẠN 2: chỉ dựng PostgreSQL để chạy Prisma migrate/seed.
-# Các service backend / worker / rag / frontend sẽ được thêm ở Giai đoạn 9.
+# Khởi chạy toàn bộ hệ thống:
+#   docker compose up -d --build
 #
-#   docker compose up -d postgres
-#   cd backend && npm run migrate && npm run seed
+# Dừng hệ thống:
+#   docker compose down
 #
-# Dữ liệu được lưu trong volume `motcua_pgdata` nên không mất khi tắt máy.
+# Dữ liệu PostgreSQL được lưu trong volume `motcua_pgdata`.
 
 services:
+  postgres_test:
+    image: postgres:16-alpine
+    container_name: motcua-postgres-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: motcua
+      POSTGRES_PASSWORD: motcua
+      POSTGRES_DB: motcua_test
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "5434:5432"
+    volumes:
+      - motcua_pgdata_test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U motcua -d motcua_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   postgres:
     image: postgres:16-alpine
     container_name: motcua-postgres
@@ -17,20 +37,58 @@ services:
       POSTGRES_USER: motcua
       POSTGRES_PASSWORD: motcua
       POSTGRES_DB: motcua
-      # Sắp xếp và mã hóa phù hợp tiếng Việt
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
       TZ: Asia/Ho_Chi_Minh
     ports:
-      # Cổng 5432 trên máy này đã bị PostgreSQL cục bộ chiếm; dùng 5433 để tránh đụng.
+      # Ánh xạ 5433 trên máy chủ vào 5432 của container (tránh trùng PostgreSQL cục bộ)
       - "5433:5432"
     volumes:
       - motcua_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U motcua -d motcua"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: motcua-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 8080
+      DATABASE_URL: "postgresql://motcua:motcua@postgres:5432/motcua?schema=public"
+      JWT_SECRET: "dev-only-secret-thay-bang-chuoi-ngau-nhien-32-ky-tu-khi-trien-khai"
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 7d
+      PUBLIC_DOMAIN: "http://localhost:5173"
+      CORS_ORIGINS: "http://localhost:5173,http://localhost:3000,http://localhost"
+      ENABLE_QUICK_LOGIN: "true"
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "/api/v1"
+        VITE_USE_MOCK: "false"
+    container_name: motcua-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+      - "3000:80"
 
 volumes:
   motcua_pgdata:
     name: motcua_pgdata
+  motcua_pgdata_test:
+    name: motcua_pgdata_test

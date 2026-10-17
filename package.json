@@ -1,0 +1,24 @@
+{
+  "name": "motcua-opencode",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Cổng Một cửa điện tử — điều phối kiểm thử",
+  "scripts": {
+    "check:matrix": "tsx scripts/coverage-matrix.ts",
+    "check:integrity": "tsx scripts/check-integrity.ts",
+    "test:db": "npm --prefix backend run test:db",
+    "test:core": "npm --prefix backend run test:core",
+    "test:api": "npm --prefix backend run test:api",
+    "test:e2e-api": "npm --prefix backend run test:e2e-api",
+    "test:fe": "npm --prefix frontend test -- --run",
+    "test:coverage": "npm --prefix backend exec -- vitest run --coverage",
+    "test:all": "npm run test:db && npm --prefix backend test && npm run test:api",
+    "verify": "pwsh -NoProfile -File scripts/verify.ps1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.4",
+    "pg": "^8.16.3",
+    "tsx": "^4.19.2"
+  }
+}

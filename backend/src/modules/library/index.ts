@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { authenticate } from '../../middleware/auth'
+import { authenticateOptional } from '../../middleware/auth'
 import { validate } from '../../middleware/validate'
 import { asyncHandler } from '../../middleware/errorHandler'
 import { send } from '../../lib/envelope'
@@ -51,10 +51,9 @@ function libraryDto(d: {
 
 export const libraryRouter: Router = Router()
 
-libraryRouter.use(authenticate)
-
 libraryRouter.get(
   '/',
+  authenticateOptional,
   validate(listQuery, 'query'),
   asyncHandler(async (req, res) => {
     const q = req.query as never as z.infer<typeof listQuery>

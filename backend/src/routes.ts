@@ -12,6 +12,7 @@ import { requestTypeRouter } from './modules/requestTypes'
 import { workflowRouter } from './modules/workflows'
 import { userRouter } from './modules/users'
 import { publicRouter } from './modules/public/verify'
+import { delegationRouter } from './modules/delegations'
 
 /** Gốc API phiên bản 1 — mọi đường dẫn khớp docs/openapi.yaml. */
 export const apiRouter: Router = Router()
@@ -20,6 +21,7 @@ apiRouter.use('/auth', authRouter)
 apiRouter.use('/applications', applicationsRouter)
 apiRouter.use('/approvals', approvalsRouter)
 apiRouter.use('/otp', otpRouter)
+apiRouter.use('/delegations', delegationRouter)
 apiRouter.use('/notifications', notificationRouter)
 apiRouter.use('/audit-logs', auditRouter)
 apiRouter.use('/catalog', catalogRouter)

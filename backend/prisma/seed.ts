@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url'
 
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { contentHash, getSignatureProvider, payloadHash } from '../src/lib/signature'
 
 const prisma = new PrismaClient()
 const here = dirname(fileURLToPath(import.meta.url))
@@ -183,7 +184,6 @@ const TABLES = [
   'applications',
   'signed_documents',
   'notifications',
-  'audit_logs',
   'idempotency_keys',
   'delegations',
   'chat_messages',
@@ -208,9 +208,11 @@ const TABLES = [
 ]
 
 async function main() {
+  await prisma.$executeRawUnsafe("SET session_replication_role = 'replica'")
   await prisma.$executeRawUnsafe(
     `TRUNCATE TABLE ${TABLES.map((t) => `"${t}"`).join(', ')} RESTART IDENTITY CASCADE`,
   )
+  await prisma.$executeRawUnsafe("SET session_replication_role = 'origin'")
 
   // --- Khóa học -----------------------------------------------------------
   await prisma.academicYear.createMany({
@@ -523,6 +525,8 @@ async function seedApplications() {
   const approvals: Dict[] = []
   const stepInstances: Dict[] = []
   const attachments: Dict[] = []
+  /** Dữ liệu biểu mẫu theo mã hồ sơ — dùng để ký lại chữ ký demo cho trung thực. */
+  const duLieuByMa = new Map(applicationList.map((a) => [String(a.maHoSo), (a.duLieu as never) ?? {}]))
 
   for (const app of applicationList) {
     const maHoSo = String(app.maHoSo)
@@ -618,6 +622,18 @@ async function seedApplications() {
       const doneAt = (approvals.find(
         (x) => x.applicationId === appId && Number(x.buocOrder) === order && x.hanhDong === 'APPROVE',
       )?.createdAt as Date | undefined) ?? null
+      let assigneeId: string | null = null
+      if (st.role === 'CO_VAN') {
+        const lopObj = lopList.find((l) => String(l.id) === String(applicant?.lopId))
+        assigneeId = asRef(mapUser, lopObj?.coVanId)
+      } else if (st.role === 'TRUONG_KHOA') {
+        const khoaObj = khoaList.find((k) => String(k.id) === String(applicant?.donViId))
+        assigneeId = asRef(mapUser, khoaObj?.truongKhoaId)
+      } else if (st.role === 'PHONG_DAO_TAO') {
+        const pdt = userList.find((u) => u.role === 'PHONG_DAO_TAO')
+        assigneeId = asRef(mapUser, pdt?.id)
+      }
+
       stepInstances.push({
         id: id.stepInstance(maHoSo, order),
         applicationId: appId,
@@ -626,6 +642,14 @@ async function seedApplications() {
         ten: String(st.ten),
         role: st.role as never,
         mode: st.mode as never,
+        assigneeId,
+        // Cấu hình luồng được ĐÓNG BĂNG vào bước (nguồn sự thật khi chạy).
+        slaHours: Number(st.slaHours ?? 48),
+        nhacTruocGio: Number(st.nhacTruocGio ?? 12),
+        leoThangSauGio: Number(st.leoThangSauGio ?? 24),
+        escalateTo: (st.escalateTo as never) ?? null,
+        allowReject: st.allowReject === undefined ? true : Boolean(st.allowReject),
+        allowSupplement: st.allowSupplement === undefined ? true : Boolean(st.allowSupplement),
         trangThai: trangThai as never,
         slaDueAt: d(app.hanXuLy),
         startedAt: trangThai === 'PENDING' ? null : d(app.ngayNop),
@@ -666,23 +690,42 @@ async function seedApplications() {
   })
 
   // --- Chữ ký -------------------------------------------------------------
+  // Dữ liệu demo cũng được KÝ THẬT bằng nhà cung cấp đang cấu hình, nên
+  // `hopLeThucTe` của dữ liệu mẫu kiểm chứng được (không còn chữ ký "giả").
+  const kyProvider = getSignatureProvider()
   await prisma.signature.createMany({
-    data: signatureList.map((s) => ({
-      id: id.signature(String(s.id)),
-      applicationId: asRef(mapApplication, s.applicationId)!,
-      vanBanId: s.vanBanId ? asRef(mapDocument, s.vanBanId) : null,
-      buocOrder: Number(s.buocOrder),
-      tenBuoc: String(s.tenBuoc),
-      nguoiKyId: asRef(mapUser, s.nguoiKyId)!,
-      hoTen: String(s.hoTen),
-      chucVu: (s.chucVu as string) ?? null,
-      vaiTro: s.vaiTro as never,
-      phuongThuc: s.phuongThuc as never,
-      thoiDiemKy: d(s.thoiDiemKy)!,
-      maBam: String(s.maBam),
-      maChuKy: String(s.maChuKy),
-      hopLe: Boolean(s.hopLe),
-    })),
+    data: signatureList.map((s) => {
+      const maHoSo = String(s.applicationId)
+      const nguoiKyId = asRef(mapUser, s.nguoiKyId)!
+      const thoiDiemKy = d(s.thoiDiemKy)!
+      const maBam = payloadHash({
+        maHoSo,
+        buocOrder: Number(s.buocOrder),
+        tenBuoc: String(s.tenBuoc),
+        nguoiKyId,
+        vaiTro: String(s.vaiTro),
+        phuongThuc: String(s.phuongThuc),
+        thoiDiemKy: thoiDiemKy.toISOString(),
+        noiDungBam: contentHash(duLieuByMa.get(maHoSo) ?? {}),
+      })
+      return {
+        id: id.signature(String(s.id)),
+        applicationId: asRef(mapApplication, s.applicationId)!,
+        vanBanId: s.vanBanId ? asRef(mapDocument, s.vanBanId) : null,
+        buocOrder: Number(s.buocOrder),
+        tenBuoc: String(s.tenBuoc),
+        nguoiKyId,
+        hoTen: String(s.hoTen),
+        chucVu: (s.chucVu as string) ?? null,
+        vaiTro: s.vaiTro as never,
+        phuongThuc: s.phuongThuc as never,
+        thoiDiemKy,
+        maBam,
+        maChuKy: kyProvider.ky(maBam),
+        provider: kyProvider.ten,
+        hopLe: Boolean(s.hopLe),
+      }
+    }),
   })
 
   // --- Lượt tải văn bản ---------------------------------------------------

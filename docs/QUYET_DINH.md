@@ -232,3 +232,19 @@ quản lý `templates`, `delegations`, tạo/sửa/xoá `request-types`, `workfl
 `reset-password`), `documents/{id}/export`, `documents/report*`, `files/{fileToken}`,
 `notifications/stream`, `chat/*`.
 
+### D10. Soft delete — KHÔNG tái sử dụng mã trong cùng bảng
+
+**Quyết định:** Mã nghiệp vụ (`ma`, `maHoSo`, `maSo`) của bản ghi đã xóa mềm (`deleted_at IS NOT NULL`) **KHÔNG được tái sử dụng** trong cùng bảng.
+
+**Lý do:**
+- Ràng buộc `UNIQUE` trên cột `ma` áp dụng cả cho bản ghi đã xóa mềm → thử tạo lại cùng mã sẽ vi phạm UNIQUE và bị cơ sở dữ liệu từ chối.
+- Tái sử dụng mã gây nhầm lẫn trong audit log và lịch sử hồ sơ (bản ghi cũ và mới cùng mã).
+- Nhất quán với nguyên tắc "append-only" của audit trail.
+
+**Thực thi:**
+- Ràng buộc UNIQUE trên các cột `ma`/`ma_so`/`ma_ho_so` đã có trong schema — bao phủ cả bản ghi xóa mềm.
+- Nếu cần "mở lại" một loại hồ sơ đã ngừng: dùng trạng thái riêng hoặc tạo bản ghi mới với mã **khác**.
+- Có test kiểm tra hành vi này tại `backend/tests/db/supplemental-2b.test.ts`.
+
+**Áp dụng với:** `faculties`, `departments`, `majors`, `classes`, `request_types`, `workflows`, `document_templates`, `users` (trường `ma_so`).
+

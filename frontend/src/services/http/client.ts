@@ -46,18 +46,43 @@ function buildUrl(path: string, query?: Record<string, unknown>): string {
   return qs ? `${url}?${qs}` : url
 }
 
+const WRITE_METHODS = new Set<HttpMethod>(['POST', 'PUT', 'PATCH', 'DELETE'])
+
+/** Sinh UUID v4 ngẫu nhiên để dùng làm Idempotency-Key. */
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  // Fallback cho môi trường không hỗ trợ crypto.randomUUID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 /** Gọi API thật; chuyển mã lỗi HTTP thành `ApiError` với `ErrorCode` nghiệp vụ. */
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, query, signal } = options
+
+  // Tránh gửi /auth/me qua mạng khi chưa có token để không gây lỗi 401 console
+  if (path === '/auth/me' && !getToken()) {
+    throw new ApiError('UNAUTHORIZED', 'Chưa đăng nhập.', 401)
+  }
+
   let response: Response
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const token = getToken()
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    if (WRITE_METHODS.has(method as HttpMethod)) {
+      headers['Idempotency-Key'] = generateIdempotencyKey()
+    }
+
     response = await fetch(buildUrl(path, query), {
       method,
       signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   } catch {
@@ -70,14 +95,33 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const payload = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
 
   if (!response.ok) {
-    const code = (payload.code as ErrorCode | undefined) ?? mapStatus(response.status)
+    const errorObj = payload.error as Record<string, unknown> | undefined
+    const code =
+      (errorObj?.code as ErrorCode | undefined) ??
+      (payload.code as ErrorCode | undefined) ??
+      mapStatus(response.status)
     const message =
-      (payload.message as string | undefined) ?? 'Đã xảy ra lỗi khi xử lý yêu cầu.'
-    throw new ApiError(code, message, response.status, payload.chiTiet as Record<string, unknown>)
+      (errorObj?.message as string | undefined) ??
+      (payload.message as string | undefined) ??
+      'Đã xảy ra lỗi khi xử lý yêu cầu.'
+    const details = (errorObj?.details ?? payload.chiTiet) as Record<string, unknown> | undefined
+    throw new ApiError(code, message, response.status, details)
+  }
+
+  // Bóc phong bì envelope của backend: { success: true, data: ..., meta?: ... }
+  if (payload && typeof payload === 'object' && 'success' in payload && 'data' in payload) {
+    if (payload.meta && Array.isArray(payload.data)) {
+      return {
+        items: payload.data,
+        ...(payload.meta as Record<string, unknown>),
+      } as T
+    }
+    return payload.data as T
   }
 
   return payload as T
 }
+
 
 function mapStatus(status: number): ErrorCode {
   if (status === 401) return 'UNAUTHORIZED'

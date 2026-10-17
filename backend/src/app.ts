@@ -37,8 +37,20 @@ export function createApp(): Express {
     }),
   )
 
-  app.get('/health', (_req, res) => {
-    res.json({ success: true, data: { ok: true, uptime: process.uptime() }, error: null })
+  app.get('/health', async (_req, res) => {
+    const { prisma } = await import('./lib/prisma')
+    let db = false
+    try {
+      await prisma.$queryRaw`SELECT 1`
+      db = true
+    } catch {
+      db = false
+    }
+    res.status(db ? 200 : 503).json({
+      success: db,
+      data: { ok: db, db, uptime: process.uptime() },
+      error: db ? null : { code: 'DB_UNAVAILABLE', message: 'Không kết nối được cơ sở dữ liệu.' },
+    })
   })
 
   app.use('/api/v1', apiRouter)

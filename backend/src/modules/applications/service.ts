@@ -14,7 +14,8 @@ import {
   applicationInclude,
   type ApplicationRow,
 } from '../shared/dto'
-import { addHours, firstStepOf, pickAssignee } from '../shared/workflow'
+import { addHours } from '../shared/workflow'
+import { actorOf, transition } from '../workflow/engine'
 import type {
   applicationListQuery,
   createApplicationBody,
@@ -340,78 +341,35 @@ export async function submit(ctx: Ctx, idOrMa: string) {
     throw AppError.invalidTransition('Chỉ hồ sơ ở trạng thái bản nháp mới có thể nộp.')
   }
   if (!app.workflow) throw AppError.validation('Loại đơn chưa được gắn luồng duyệt.')
-  const steps = app.workflow.steps
-  if (!steps.length) throw AppError.validation('Luồng duyệt chưa có bước xử lý nào.')
 
   kiemTraBatBuoc(app)
 
-  const first = firstStepOf(steps)!
-  const now = new Date()
-  const assigneeId = await pickAssignee(first, {
-    classId: app.classId,
-    facultyId: app.facultyId,
-  })
+  // Mọi chuyển trạng thái đi qua một cửa duy nhất (khoá dòng + ảnh chụp luồng).
+  const outcome = await transition({ action: 'SUBMIT', appId: app.id, actor: actorOf(ctx.user) })
 
-  await prisma.$transaction(async (tx) => {
-    await tx.stepInstance.createMany({
-      data: steps.map((s) => ({
+  if (outcome.buocKeTiep) {
+    await notifyRole(
+      outcome.buocKeTiep.role,
+      {
+        tieuDe: 'Có hồ sơ mới chờ bạn xử lý',
+        noiDung: `Hồ sơ ${app.maHoSo} của sinh viên ${app.applicant.hoTen} đã được nộp và đang chờ xử lý.`,
+        loai: 'INFO',
         applicationId: app.id,
-        workflowStepId: s.id,
-        stepOrder: s.order,
-        ten: s.ten,
-        role: s.role,
-        mode: s.mode,
-        trangThai: s.order === first.order ? 'IN_PROGRESS' : 'PENDING',
-        assigneeId: s.order === first.order ? assigneeId : null,
-        startedAt: s.order === first.order ? now : null,
-        slaDueAt: s.order === first.order ? addHours(now, s.slaHours) : null,
-      })),
-    })
-    await tx.application.update({
-      where: { id: app.id },
-      data: {
-        trangThai: 'SUBMITTED',
-        workflowId: app.workflowId,
-        workflowVersion: app.workflow!.version,
-        currentStepOrder: first.order,
-        tongSoBuoc: steps.length,
-        buocDaDuyet: 0,
-        ngayNop: now,
-        hanXuLy: addHours(now, first.slaHours),
+        maHoSo: app.maHoSo,
+        lienKet: `/quan-ly/don/${app.maHoSo}`,
       },
-    })
-    await tx.approval.create({
-      data: {
-        applicationId: app.id,
-        buocOrder: 0,
-        hanhDong: 'SUBMIT',
-        actorId: ctx.user.id,
-        vaiTro: 'SINH_VIEN',
-        ghiChu: 'Sinh viên nộp hồ sơ.',
-      },
-    })
-  })
+      prisma,
+      ctx.user.id,
+    )
+  }
 
-  await notifyRole(
-    first.role,
-    {
-      tieuDe: 'Có hồ sơ mới chờ bạn xử lý',
-      noiDung: `Hồ sơ ${app.maHoSo} của sinh viên ${app.applicant.hoTen} đã được nộp và đang chờ xử lý.`,
-      loai: 'INFO',
-      applicationId: app.id,
-      maHoSo: app.maHoSo,
-      lienKet: `/quan-ly/don/${app.maHoSo}`,
-    },
-    prisma,
-    ctx.user.id,
-  )
   await recordAudit({
     nguoiThucHien: ctx.user,
     hanhDong: 'SUBMIT_APPLICATION',
     doiTuong: 'Hồ sơ một cửa',
     doiTuongId: app.maHoSo,
     giaTriTruoc: 'Bản nháp',
-    giaTriSau: `Chờ xử lý bước ${first.order}`,
+    giaTriSau: `Chờ xử lý bước ${outcome.buocOrder}`,
     diaChiIp: ctx.ip,
     thietBi: ctx.userAgent,
   })
@@ -425,30 +383,12 @@ export async function cancel(ctx: Ctx, idOrMa: string, lyDo?: string) {
   if (app.buocDaDuyet > 0) {
     throw AppError.invalidTransition('Hồ sơ đã được phê duyệt ở một cấp nên không thể rút.')
   }
-  if (!['SUBMITTED', 'PENDING_APPROVAL', 'NEED_SUPPLEMENT'].includes(app.trangThai)) {
-    throw AppError.invalidTransition('Hồ sơ ở trạng thái hiện tại không thể rút.')
-  }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.application.update({
-      where: { id: app.id },
-      data: { trangThai: 'CANCELLED', hanXuLy: null },
-    })
-    await tx.stepInstance.updateMany({
-      where: { applicationId: app.id, trangThai: { in: ['PENDING', 'IN_PROGRESS'] } },
-      data: { trangThai: 'SKIPPED', completedAt: new Date() },
-    })
-    await tx.approval.create({
-      data: {
-        applicationId: app.id,
-        buocOrder: 0,
-        hanhDong: 'CANCEL',
-        actorId: ctx.user.id,
-        vaiTro: 'SINH_VIEN',
-        ghiChu: lyDo ?? 'Sinh viên chủ động rút hồ sơ.',
-        lyDo: lyDo ?? null,
-      },
-    })
+  const outcome = await transition({
+    action: 'CANCEL',
+    appId: app.id,
+    actor: actorOf(ctx.user),
+    lyDo: lyDo ?? null,
   })
 
   await recordAudit({
@@ -462,6 +402,7 @@ export async function cancel(ctx: Ctx, idOrMa: string, lyDo?: string) {
     thietBi: ctx.userAgent,
   })
 
+  void outcome
   return applicationDetailDto(await loadApplication(app.id))
 }
 
@@ -473,67 +414,42 @@ export async function supplement(ctx: Ctx, idOrMa: string, input: SupplementBody
       'Chỉ hồ sơ đang ở trạng thái Cần bổ sung mới có thể bổ sung.',
     )
   }
-  if (!app.workflow) throw AppError.validation('Hồ sơ chưa gắn luồng duyệt.')
 
-  const yeuCau = (app.yeuCauBoSung ?? {}) as Record<string, unknown>
-  const quayVe = Number(yeuCau.quayVeBuocOrder ?? 1)
-  const step = app.workflow.steps.find((s) => s.order === quayVe) ?? firstStepOf(app.workflow.steps)!
-
-  const now = new Date()
-  const duLieuMoi = { ...((app.duLieu ?? {}) as Record<string, unknown>), ...(input.duLieu ?? {}) }
-
-  await prisma.$transaction(async (tx) => {
-    if (input.tepDinhKem?.length) {
-      await tx.applicationAttachment.createMany({
-        data: attachmentRows(app.id, input.tepDinhKem, ctx.user.id),
-      })
-    }
-    await tx.application.update({
-      where: { id: app.id },
-      data: {
-        duLieu: duLieuMoi as Prisma.InputJsonValue,
-        yeuCauBoSung: { ...yeuCau, daBoSung: true } as Prisma.InputJsonValue,
-        trangThai: 'PENDING_APPROVAL',
-        currentStepOrder: step.order,
-        hanXuLy: addHours(now, step.slaHours),
-      },
-    })
-    await tx.stepInstance.updateMany({
-      where: { applicationId: app.id, stepOrder: step.order },
-      data: { trangThai: 'IN_PROGRESS', startedAt: now, slaDueAt: addHours(now, step.slaHours) },
-    })
-    await tx.approval.create({
-      data: {
-        applicationId: app.id,
-        buocOrder: 0,
-        hanhDong: 'SUPPLEMENT',
-        actorId: ctx.user.id,
-        vaiTro: 'SINH_VIEN',
-        ghiChu: input.ghiChu ?? 'Sinh viên bổ sung hồ sơ theo yêu cầu.',
-      },
-    })
+  const outcome = await transition({
+    action: 'SUPPLEMENT',
+    appId: app.id,
+    actor: actorOf(ctx.user),
+    duLieu: input.duLieu ?? null,
+    tepDinhKem: input.tepDinhKem?.length
+      ? attachmentRows(app.id, input.tepDinhKem, ctx.user.id)
+      : null,
+    ghiChu: input.ghiChu ?? null,
   })
 
-  await notifyRole(
-    step.role,
-    {
-      tieuDe: 'Sinh viên đã bổ sung hồ sơ',
-      noiDung: `Hồ sơ ${app.maHoSo} của sinh viên ${app.applicant.hoTen} đã được bổ sung và quay lại bước "${step.ten}".`,
-      loai: 'SUCCESS',
-      applicationId: app.id,
-      maHoSo: app.maHoSo,
-      lienKet: `/quan-ly/don/${app.maHoSo}`,
-    },
-    prisma,
-    ctx.user.id,
-  )
+  // Bổ sung xong quay về ĐÚNG cấp đã yêu cầu (theo ảnh chụp luồng).
+  const step = outcome.quayVeBuoc
+  if (step) {
+    await notifyRole(
+      step.role,
+      {
+        tieuDe: 'Sinh viên đã bổ sung hồ sơ',
+        noiDung: `Hồ sơ ${app.maHoSo} của sinh viên ${app.applicant.hoTen} đã được bổ sung và quay lại bước "${step.ten}".`,
+        loai: 'SUCCESS',
+        applicationId: app.id,
+        maHoSo: app.maHoSo,
+        lienKet: `/quan-ly/don/${app.maHoSo}`,
+      },
+      prisma,
+      ctx.user.id,
+    )
+  }
   await recordAudit({
     nguoiThucHien: ctx.user,
     hanhDong: 'SUPPLEMENT_APPLICATION',
     doiTuong: 'Hồ sơ một cửa',
     doiTuongId: app.maHoSo,
     giaTriTruoc: 'Cần bổ sung',
-    giaTriSau: `Quay lại bước ${step.order}`,
+    giaTriSau: `Quay lại bước ${outcome.buocOrder}`,
     diaChiIp: ctx.ip,
     thietBi: ctx.userAgent,
   })

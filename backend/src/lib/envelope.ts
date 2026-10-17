@@ -44,11 +44,13 @@ export function sendError(
   code: ErrorCode,
   message: string,
   details?: Record<string, unknown>,
+  headers?: Record<string, string>,
 ): Response {
   const body: Envelope<never> = {
     success: false,
     data: null,
     error: details ? { code, message, details } : { code, message },
   }
+  if (headers) res.set(headers)
   return res.status(status).json(body)
 }
