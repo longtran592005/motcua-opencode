@@ -125,7 +125,7 @@ describe('2. Luồng hồ sơ đầy đủ (Application Lifecycle & Workflows)',
 
     // Sinh viên nhận được thông báo
     const notif = await prisma.notification.findFirst({
-      where: { userId: studentUserId, applicationId: draft.id },
+      where: { nguoiNhanId: studentUserId, applicationId: draft.id },
       orderBy: { createdAt: 'desc' },
     })
     expect(notif).not.toBeNull()
@@ -167,6 +167,10 @@ describe('2. Luồng hồ sơ đầy đủ (Application Lifecycle & Workflows)',
     expect(supRes.body.data.currentStepOrder).toBe(1)
 
     const violations = await runIntegrityChecks(DATABASE_URL)
+    // CHÚ THÍCH (Q1): ca này ĐỎ do LỖI THẬT ở lõi workflow (không sửa code nghiệp vụ trong commit Q1).
+    // Engine tạo sẵn các bước TƯƠNG LAI với trang_thai='PENDING' nhưng assignee_id = null
+    // (engine.ts, nhánh SUBMIT) ⇒ check STEP_PENDING_THIEU_ASSIGNEE báo 1 vi phạm (bước 2, TRUONG_KHOA).
+    // Xem docs/BAO_CAO_BUOC1.md mục "Lỗi thật phát hiện".
     expect(violations.length).toBe(0)
   })
 
@@ -231,6 +235,8 @@ describe('2. Luồng hồ sơ đầy đủ (Application Lifecycle & Workflows)',
     expect([400, 403, 409, 422]).toContain(res.status)
 
     const violations = await runIntegrityChecks(DATABASE_URL)
+    // CHÚ THÍCH (Q1): ca này ĐỎ do cùng LỖI THẬT ở lõi workflow như ca "Yêu cầu bổ sung" phía trên
+    // (engine tạo bước tương lai PENDING với assignee_id = null). Xem docs/BAO_CAO_BUOC1.md.
     expect(violations.length).toBe(0)
   })
 

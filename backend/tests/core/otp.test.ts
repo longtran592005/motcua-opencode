@@ -204,7 +204,7 @@ describe('3. Xác thực OTP và Bảo mật Ký số (OTP & Signing)', () => {
 
     // Lấy thông tin trạng thái challenge
     const statusRes = await api()
-      .get(`/api/v1/otp/challenge/${challengeId}`)
+      .get(`/api/v1/otp/${challengeId}`)
       .set(bearer(tkSession.token))
     expect(statusRes.status).toBe(200)
 

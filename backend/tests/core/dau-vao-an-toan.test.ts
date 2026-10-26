@@ -9,11 +9,13 @@ import {
   api,
   approverFor,
   bearer,
+  buildDraftBody,
   cleanupProvisioned,
   cleanupTracked,
   createDraft,
   createFlow,
   driveToCompletion,
+  fetchRequestType,
   idemKey,
   login,
   pickRequestTypeId,
@@ -39,12 +41,13 @@ describe('6. An toàn Đầu vào và Kiểm toán (Input Safety & Audit Logs)',
   })
 
   // 1. Tệp đính kèm quá dung lượng bị từ chối
-  it('Tệp đính kèm vượt quá dung lượng cho phép (>200MB) bị từ chối VALIDATION_ERROR (400)', async () => {
+  it('Tệp đính kèm vượt quá dung lượng cho phép (>200MB) bị từ chối VALIDATION_ERROR (422)', async () => {
     const rtId = await pickRequestTypeId()
 
     const res = await api()
       .post('/api/v1/applications')
       .set(bearer(sv.token))
+      .set('Idempotency-Key', idemKey())
       .send({
         requestTypeId: rtId,
         duLieu: {},
@@ -56,7 +59,7 @@ describe('6. An toàn Đầu vào và Kiểm toán (Input Safety & Audit Logs)',
           },
         ],
       })
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(422)
     expect(res.body.error?.code).toBe('VALIDATION_ERROR')
   })
 
@@ -67,6 +70,7 @@ describe('6. An toàn Đầu vào và Kiểm toán (Input Safety & Audit Logs)',
     const res = await api()
       .post('/api/v1/applications')
       .set(bearer(sv.token))
+      .set('Idempotency-Key', idemKey())
       .send({
         requestTypeId: rtId,
         duLieu: {},
@@ -93,20 +97,20 @@ describe('6. An toàn Đầu vào và Kiểm toán (Input Safety & Audit Logs)',
     for (const payload of maliciousPayloads) {
       // 1. tuKhoa
       const resTuKhoa = await api()
-        .get(`/api/v1/applications?tuKhoa=${encodeURIComponent(payload)}`)
+        .get(`/api/v1/applications/mine?tuKhoa=${encodeURIComponent(payload)}`)
         .set(bearer(sv.token))
       expect(resTuKhoa.status).toBe(200)
       expect(resTuKhoa.body.success).toBe(true)
 
       // 2. khoa
       const resKhoa = await api()
-        .get(`/api/v1/applications?khoa=${encodeURIComponent(payload)}`)
+        .get(`/api/v1/applications/mine?khoa=${encodeURIComponent(payload)}`)
         .set(bearer(sv.token))
       expect(resKhoa.status).toBe(200)
 
       // 3. lop
       const resLop = await api()
-        .get(`/api/v1/applications?lop=${encodeURIComponent(payload)}`)
+        .get(`/api/v1/applications/mine?lop=${encodeURIComponent(payload)}`)
         .set(bearer(sv.token))
       expect(resLop.status).toBe(200)
     }
@@ -119,13 +123,18 @@ describe('6. An toàn Đầu vào và Kiểm toán (Input Safety & Audit Logs)',
 
     // Nộp đơn chứa XSS trong dữ liệu
     const draft = await createDraft(sv, flow.requestType.id)
+
+    // PUT thay thế toàn bộ hồ sơ nháp: phải gửi kèm giấy tờ bắt buộc, nếu không
+    // bước nộp sau đó sẽ bị chặn MISSING_ATTACHMENT (đây là dữ liệu test, không phải lỗi nghiệp vụ).
+    const rt = await fetchRequestType(flow.requestType.id)
+    const putBody = buildDraftBody(rt)
+    putBody.duLieu.lyDo = xssScript
+
     await api()
       .put(`/api/v1/applications/${draft.maHoSo}`)
       .set(bearer(sv.token))
-      .send({
-        requestTypeId: flow.requestType.id,
-        duLieu: { lyDo: xssScript },
-      })
+      .set('Idempotency-Key', idemKey())
+      .send(putBody)
     await submit(sv, draft.maHoSo)
 
     // Duyệt với ghi chú chứa XSS
@@ -148,28 +157,28 @@ describe('6. An toàn Đầu vào và Kiểm toán (Input Safety & Audit Logs)',
   })
 
   // 5. pageSize quá lớn hoặc âm bị chặn
-  it('Phân trang: Tham số pageSize quá lớn (>100) hoặc âm bị từ chối VALIDATION_ERROR (400)', async () => {
+  it('Phân trang: Tham số pageSize quá lớn (>100) hoặc âm bị từ chối VALIDATION_ERROR (422)', async () => {
     // pageSize > 100
     const resLon = await api()
-      .get('/api/v1/applications?pageSize=500')
+      .get('/api/v1/applications/mine?pageSize=500')
       .set(bearer(sv.token))
-    expect(resLon.status).toBe(400)
+    expect(resLon.status).toBe(422)
     expect(resLon.body.error?.code).toBe('VALIDATION_ERROR')
 
     // pageSize <= 0
     const resAm = await api()
-      .get('/api/v1/applications?pageSize=-5')
+      .get('/api/v1/applications/mine?pageSize=-5')
       .set(bearer(sv.token))
-    expect(resAm.status).toBe(400)
+    expect(resAm.status).toBe(422)
     expect(resAm.body.error?.code).toBe('VALIDATION_ERROR')
   })
 
   // 6. Sắp xếp ngoài danh sách cho phép bị chặn
-  it('Sắp xếp: Tham số sapXep ngoài danh sách cho phép bị từ chối VALIDATION_ERROR (400)', async () => {
+  it('Sắp xếp: Tham số sapXep ngoài danh sách cho phép bị từ chối VALIDATION_ERROR (422)', async () => {
     const res = await api()
-      .get('/api/v1/applications?sapXep=KHONG_HOP_LE')
+      .get('/api/v1/applications/mine?sapXep=KHONG_HOP_LE')
       .set(bearer(sv.token))
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(422)
     expect(res.body.error?.code).toBe('VALIDATION_ERROR')
   })
 
@@ -177,7 +186,7 @@ describe('6. An toàn Đầu vào và Kiểm toán (Input Safety & Audit Logs)',
   it('Kiểm toán: Mỗi hành động quan trọng (đăng nhập, nộp đơn, duyệt, thu hồi) tạo bản ghi audit log chuẩn', async () => {
     // Hành động 1: Đăng nhập
     const loginRes = await api().post('/api/v1/auth/login').send({
-      dinhDanh: 'sv001',
+      dinhDanh: '20211234',
       matKhau: 'demo1234',
     })
     expect(loginRes.status).toBe(200)

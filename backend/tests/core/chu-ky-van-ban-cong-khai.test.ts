@@ -98,7 +98,7 @@ describe('5. Chữ ký số và Tra cứu Văn bản Công khai (Signatures & Ve
     expect(res.status).toBe(404)
     expect(res.body.success).toBe(false)
     expect(res.body.error).toBeDefined()
-    expect(res.body.data).toBeUndefined()
+    expect(res.body.data).toBeNull()
   })
 
   // 4. API công khai che toàn bộ dữ liệu cá nhân (PII)
