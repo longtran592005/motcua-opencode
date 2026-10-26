@@ -129,12 +129,12 @@ describe('1. Xác thực và Phân quyền (Authentication & Authorization)', ()
 
   // 7. Bảng phân quyền data-driven: Sai vai trò -> 403 FORBIDDEN
   const permissionChecks = [
-    { role: 'SINH_VIEN', getSession: () => svA, method: 'get', path: '/api/v1/approvals' },
+    { role: 'SINH_VIEN', getSession: () => svA, method: 'get', path: '/api/v1/approvals', body: {} },
     { role: 'SINH_VIEN', getSession: () => svA, method: 'post', path: '/api/v1/request-types', body: {} },
-    { role: 'SINH_VIEN', getSession: () => svA, method: 'get', path: '/api/v1/users' },
-    { role: 'SINH_VIEN', getSession: () => svA, method: 'get', path: '/api/v1/audit-logs' },
+    { role: 'SINH_VIEN', getSession: () => svA, method: 'get', path: '/api/v1/users', body: {} },
+    { role: 'SINH_VIEN', getSession: () => svA, method: 'get', path: '/api/v1/audit-logs', body: {} },
     { role: 'CO_VAN', getSession: () => cvA, method: 'post', path: '/api/v1/request-types', body: {} },
-    { role: 'CO_VAN', getSession: () => cvA, method: 'get', path: '/api/v1/audit-logs' },
+    { role: 'CO_VAN', getSession: () => cvA, method: 'get', path: '/api/v1/audit-logs', body: {} },
     { role: 'TRUONG_KHOA', getSession: () => tkA, method: 'post', path: '/api/v1/users', body: {} },
     { role: 'PHONG_DAO_TAO', getSession: () => pdt, method: 'post', path: '/api/v1/workflows', body: {} },
   ] as const
