@@ -5,6 +5,7 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/**/*.test.ts'],
     exclude: ['tests/db/**', 'node_modules/**'],
+    globalSetup: ['tests/global-setup.ts'],
     setupFiles: ['tests/setup.ts'],
     // Dùng chung một CSDL nên chạy tuần tự để tránh tranh chấp.
     fileParallelism: false,

@@ -67,7 +67,16 @@ describe('CSDL — Chu trình Sao lưu và Phục hồi (Backup & Restore Cycle)
       await clientRestored.end()
     }
 
-    // 4. Chạy kiểm tra toàn vẹn trên CSDL vừa phục hồi -> 0 vi phạm
+    // 4. Sau khôi phục: đồng bộ sequence mã hồ sơ với max mã của CSDL vừa phục hồi (Q3).
+    const syncClient = new pg.Client({ connectionString: restoreDbUrl })
+    await syncClient.connect()
+    try {
+      await syncClient.query('SELECT sync_ma_ho_so_sequence()')
+    } finally {
+      await syncClient.end()
+    }
+
+    // 5. Chạy kiểm tra toàn vẹn trên CSDL vừa phục hồi -> 0 vi phạm
     const violations = await runIntegrityChecks(restoreDbUrl)
     expect(violations.length).toBe(0)
   })

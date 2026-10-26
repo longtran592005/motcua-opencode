@@ -67,4 +67,47 @@ describe('CSDL — Sinh mã hồ sơ đồng thời và reset theo năm (Sequenc
       client.release()
     }
   })
+
+  // Q3: bảo vệ chống lệch sequence (mã seed viết tay làm sequence thấp hơn max mã).
+  it('Bảo vệ (Q3): sequence ≥ max mã hồ sơ của năm và 5 mã sinh mới không trùng', async () => {
+    // Đồng bộ sequence theo dữ liệu hiện có trước khi kiểm tra.
+    await pool.query('SELECT sync_ma_ho_so_sequence()')
+
+    const year = new Date().getFullYear()
+    const seqRes = await pool.query<{ last_value: string; is_called: boolean }>(
+      'SELECT last_value, is_called FROM application_code_seq',
+    )
+    const lastValue = BigInt(seqRes.rows[0].last_value)
+    const isCalled = seqRes.rows[0].is_called
+    // nextval() kế tiếp trả về last_value + 1 nếu is_called, ngược lại là last_value.
+    const nextValue = isCalled ? lastValue + 1n : lastValue
+
+    const maxRes = await pool.query<{ max_num: string | null }>(
+      `SELECT MAX(substring(ma_ho_so FROM '^MC-${year}-(\\d+)$')::bigint)::text AS max_num
+         FROM applications`,
+    )
+    const maxCode = BigInt(maxRes.rows[0].max_num ?? '0')
+
+    // Sequence phải "đi trước" mọi mã hồ sơ đang tồn tại của năm ⇒ không bao giờ trùng.
+    expect(nextValue).toBeGreaterThan(maxCode)
+
+    // Sinh 5 mã mới: không trùng nhau, không trùng mã đã có trong CSDL.
+    const codes: string[] = []
+    for (let i = 0; i < 5; i += 1) {
+      const r = await pool.query<{ next_ma_ho_so: string }>('SELECT next_ma_ho_so()')
+      codes.push(r.rows[0].next_ma_ho_so)
+    }
+    expect(new Set(codes).size).toBe(5)
+    for (const code of codes) {
+      expect(code).toMatch(new RegExp(`^MC-${year}-\\d{6}$`))
+    }
+    const clash = await pool.query<{ n: string }>(
+      'SELECT count(*)::text AS n FROM applications WHERE ma_ho_so = ANY($1::text[])',
+      [codes],
+    )
+    expect(clash.rows[0].n).toBe('0')
+
+    // Trả sequence về đúng trạng thái đã đồng bộ (5 mã vừa sinh chỉ để kiểm tra).
+    await pool.query('SELECT sync_ma_ho_so_sequence()')
+  })
 })

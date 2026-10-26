@@ -398,6 +398,13 @@ async function main() {
     await prisma.$executeRawUnsafe('ALTER TABLE audit_logs ENABLE TRIGGER audit_logs_append_only')
   }
 
+  // Q3: dữ liệu seed chèn mã hồ sơ VIẾT TAY (MC-2026-000120 … MC-2026-000154) nên
+  // `application_code_seq` không tiến theo. Đồng bộ lại sequence = max mã của năm
+  // để các mã sinh sau (next_ma_ho_so()) không đụng vào mã đã có.
+  const synced = await prisma.$queryRaw<Array<{ sync_ma_ho_so_sequence: bigint }>>`
+    SELECT sync_ma_ho_so_sequence() AS sync_ma_ho_so_sequence
+  `
+
   const counts = {
     faculties: khoaList.length,
     departments: phongBanList.length,
@@ -415,6 +422,7 @@ async function main() {
     notifications: notificationList.length,
     auditLogs: auditLogList.length,
     library: libraryList.length,
+    maHoSoSequenceDongBo: Number(synced[0]?.sync_ma_ho_so_sequence ?? 0),
   }
   process.stdout.write(`Seed xong: ${JSON.stringify(counts)}\n`)
 }
