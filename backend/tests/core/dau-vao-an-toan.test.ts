@@ -28,7 +28,7 @@ describe('6. An toàn Đầu vào và Kiểm toán (Input Safety & Audit Logs)',
   let admin: Session
 
   beforeAll(async () => {
-    sv = await login('sv001')
+    sv = await login('20211234')
     studentUserId = sv.user.id
     admin = await login('admin')
   })

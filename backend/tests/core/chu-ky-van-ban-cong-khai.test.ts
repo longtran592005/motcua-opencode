@@ -28,7 +28,7 @@ describe('5. Chữ ký số và Tra cứu Văn bản Công khai (Signatures & Ve
   let admin: Session
 
   beforeAll(async () => {
-    sv = await login('sv001')
+    sv = await login('20211234')
     studentUserId = sv.user.id
     admin = await login('admin')
   })

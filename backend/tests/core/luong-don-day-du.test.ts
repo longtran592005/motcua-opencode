@@ -106,13 +106,13 @@ describe('2. Luồng hồ sơ đầy đủ (Application Lifecycle & Workflows)',
 
     const { session: cvSession } = await approverFor(studentUserId, 'CO_VAN')
 
-    // Từ chối không có lý do -> 400
+    // Từ chối không có lý do -> 422 (lỗi kiểm tra dữ liệu vào)
     const noReason = await api()
       .post(`/api/v1/approvals/${draft.maHoSo}/reject`)
       .set(bearer(cvSession.token))
       .set('Idempotency-Key', idemKey())
       .send({})
-    expect(noReason.status).toBe(400)
+    expect(noReason.status).toBe(422)
 
     // Từ chối có lý do -> 200
     const rejectRes = await api()
@@ -150,7 +150,7 @@ describe('2. Luồng hồ sơ đầy đủ (Application Lifecycle & Workflows)',
       .post(`/api/v1/approvals/${draft.maHoSo}/request-supplement`)
       .set(bearer(cvSession.token))
       .set('Idempotency-Key', idemKey())
-      .send({ ghiChu: 'Vui lòng nộp bản chụp CCCD rõ nét.' })
+      .send({ noiDung: 'Vui lòng nộp bản chụp CCCD rõ nét.' })
     expect(reqSup.status).toBe(200)
     expect(reqSup.body.data.trangThai).toBe('NEED_SUPPLEMENT')
 
@@ -288,7 +288,7 @@ describe('2. Luồng hồ sơ đầy đủ (Application Lifecycle & Workflows)',
         tuNgay: new Date(Date.now() - 3600_000),
         denNgay: new Date(Date.now() + 86400_000),
         lyDo: 'Kiểm thử ủy quyền',
-        hoatDong: true,
+        hieuLuc: true,
       },
     })
 

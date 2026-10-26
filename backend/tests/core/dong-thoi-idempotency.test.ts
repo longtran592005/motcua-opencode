@@ -28,7 +28,7 @@ describe('4. Đồng thời và Tính lũy đẳng (Concurrency & Idempotency)',
   let studentUserId: string
 
   beforeAll(async () => {
-    sv = await login('sv001')
+    sv = await login('20211234')
     studentUserId = sv.user.id
   })
 

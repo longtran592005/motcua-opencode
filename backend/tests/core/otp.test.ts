@@ -28,7 +28,7 @@ describe('3. Xác thực OTP và Bảo mật Ký số (OTP & Signing)', () => {
   let tkUserId: string
 
   beforeAll(async () => {
-    sv = await login('sv001')
+    sv = await login('20211234')
     studentUserId = sv.user.id
     const approver = await approverFor(studentUserId, 'TRUONG_KHOA')
     tkSession = approver.session
