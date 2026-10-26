@@ -1,9 +1,18 @@
 import 'dotenv/config'
 import { z } from 'zod'
 
-/** Chuỗi bí mật mặc định CHỈ dùng khi phát triển/kiểm thử — bị chặn ở production. */
+/**
+ * Chuỗi bí mật mặc định CHỈ-DÙNG-DEV (quyết định Q2).
+ *
+ * Chỉ được phép dùng khi `NODE_ENV` đúng bằng "development" hoặc "test".
+ * Khi `NODE_ENV` chưa đặt hoặc mang giá trị khác (production, staging…) mà
+ * thiếu `SIGNATURE_HMAC_SECRET` thì ứng dụng TỪ CHỐI KHỞI ĐỘNG.
+ */
 export const DEV_JWT_SECRET = 'dev-only-secret-khong-dung-o-production-0123456789'
 export const DEV_HMAC_SECRET = 'dev-only-hmac-secret-doi-o-production-0123456789'
+
+/** Danh sách môi trường được phép dùng khoá mặc định CHỈ-DÙNG-DEV. */
+export const DEV_ONLY_ENVS = ['development', 'test'] as const
 
 const boolFromEnv = (fallback: boolean) =>
   z
@@ -12,7 +21,13 @@ const boolFromEnv = (fallback: boolean) =>
     .transform((v) => v === 'true')
 
 const schema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  /**
+   * Môi trường chạy. KHÔNG có giá trị mặc định (quyết định Q2): khi biến này
+   * chưa được đặt, ứng dụng coi như môi trường "khác" — không được dùng khoá
+   * bí mật mặc định CHỈ-DÙNG-DEV. Cho phép mọi giá trị (development, test,
+   * production, staging…) để việc triển khai không bị chặn oan.
+   */
+  NODE_ENV: z.string().optional(),
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
 
   DATABASE_URL: z.string().min(1, 'Thiếu DATABASE_URL'),
@@ -86,6 +101,51 @@ export const env = parsed.data
 
 export const isProduction = env.NODE_ENV === 'production'
 export const isTest = env.NODE_ENV === 'test'
+export const isDevelopment = env.NODE_ENV === 'development'
+/** Được phép dùng các bí mật mặc định CHỈ-DÙNG-DEV hay không. */
+export const mayUseDevOnlySecrets = (DEV_ONLY_ENVS as readonly string[]).includes(env.NODE_ENV ?? '')
+
+/**
+ * Kiểm tra khoá ký HMAC (quyết định Q2). Trả về thông báo lỗi nếu cấu hình
+ * buộc phải TỪ CHỐI KHỞI ĐỘNG, hoặc `null` nếu hợp lệ.
+ *
+ * Hàm thuần (nhận tham số, không đọc module) để dễ kiểm thử.
+ */
+export function signatureSecretProblem(
+  nodeEnv: string | undefined,
+  provider: string,
+  hmacSecret: string,
+): string | null {
+  if (provider !== 'INTERNAL_HMAC') return null
+  if (hmacSecret !== DEV_HMAC_SECRET) return null
+  const duocPhep = (DEV_ONLY_ENVS as readonly string[]).includes(nodeEnv ?? '')
+  if (duocPhep) return null
+  const moTa = nodeEnv === undefined ? 'chưa đặt' : `"${nodeEnv}"`
+  return (
+    `TỪ CHỐI KHỞI ĐỘNG: NODE_ENV=${moTa} nhưng thiếu SIGNATURE_HMAC_SECRET. ` +
+    'Khoá HMAC mặc định CHỈ-DÙNG-DEV chỉ được phép khi NODE_ENV là "development" hoặc "test"; ' +
+    'các môi trường khác bắt buộc đặt SIGNATURE_HMAC_SECRET (>= 16 ký tự).'
+  )
+}
+
+/**
+ * Bắt buộc kiểm tra khoá ký HMAC ngay khi khởi động. Ném lỗi để chặn khởi động
+ * nếu đang dùng khoá mặc định CHỈ-DÙNG-DEV ở môi trường không được phép; in
+ * cảnh báo rõ ràng khi (hợp lệ) đang dùng khoá CHỈ-DÙNG-DEV.
+ */
+export function assertSignatureSecret(): void {
+  const problem = signatureSecretProblem(
+    env.NODE_ENV,
+    env.SIGNATURE_PROVIDER,
+    env.SIGNATURE_HMAC_SECRET,
+  )
+  if (problem) throw new Error(problem)
+  if (env.SIGNATURE_PROVIDER === 'INTERNAL_HMAC' && env.SIGNATURE_HMAC_SECRET === DEV_HMAC_SECRET) {
+    process.stderr.write(
+      '[CẢNH BÁO] Đang dùng khoá ký HMAC mặc định CHỈ-DÙNG-DEV — tuyệt đối không dùng ở production.\n',
+    )
+  }
+}
 
 /** Chặn khởi động ở production khi còn dùng bí mật mặc định. */
 export function assertProductionSecrets(): void {

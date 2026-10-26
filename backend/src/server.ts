@@ -1,4 +1,4 @@
-import { assertProductionSecrets, env } from './config/env'
+import { assertProductionSecrets, assertSignatureSecret, env } from './config/env'
 import { createApp } from './app'
 import { logger } from './lib/logger'
 import { prisma } from './lib/prisma'
@@ -6,6 +6,9 @@ import { purgeExpiredIdempotencyKeys } from './middleware/idempotency'
 import { runSlaJobSafe } from './modules/workflow/sla'
 
 assertProductionSecrets()
+// Quyết định Q2: từ chối khởi động nếu dùng khoá HMAC mặc định CHỈ-DÙNG-DEV ở
+// môi trường không được phép (NODE_ENV chưa đặt, production, staging…).
+assertSignatureSecret()
 
 const app = createApp()
 

@@ -115,6 +115,8 @@ khác khoa/lớp/vai trò đều bị `403 FORBIDDEN_SCOPE`.
 | `OTP_EXPIRED` | 410 |
 | `DOCUMENT_REVOKED` | 410 |
 | `OTP_LOCKED` | 423 |
+| `RATE_LIMITED` | 429 (kèm tiêu đề `Retry-After`) |
+| `UNKNOWN` | 500 |
 
 ---
 
@@ -247,4 +249,48 @@ quản lý `templates`, `delegations`, tạo/sửa/xoá `request-types`, `workfl
 - Có test kiểm tra hành vi này tại `backend/tests/db/supplemental-2b.test.ts`.
 
 **Áp dụng với:** `faculties`, `departments`, `majors`, `classes`, `request_types`, `workflows`, `document_templates`, `users` (trường `ma_so`).
+
+---
+
+## Nhóm E — Quyết định Bước 1: Lõi Workflow Engine (đã chốt)
+
+### E1 (Q1). Sửa các ca kiểm thử lõi đang đỏ
+
+Bốn ca trong `backend/tests/core/*` đỏ vì **dữ liệu/tham số sai trong chính tệp kiểm thử**, không phải
+lỗi nghiệp vụ. Cách xử lý: **chỉ sửa tệp kiểm thử** (dùng `maSo` có thật trong seed như `20211234`
+thay vì mã bịa `sv001`; sửa đường dẫn endpoint; đổi kỳ vọng `undefined` → `null` theo phong bì A1;
+gắn `Idempotency-Key`; dùng `PUT` đầy đủ trường bắt buộc). Không xoá, không `skip`, không bỏ
+assertion. Gộp thành một commit riêng "Sửa test lõi đỏ" TRƯỚC Phần B.
+
+Nếu sau khi sửa tệp kiểm thử mà ca vẫn đỏ vì **lỗi thật ở mã nghiệp vụ**: KHÔNG sửa mã nghiệp vụ
+trong commit đó; ghi vào mục "Lỗi thật phát hiện" của báo cáo và để ca đó đỏ **có chú thích rõ**.
+(Xem `docs/BAO_CAO_BUOC1.md`.)
+
+### E2 (Q2). Khoá ký HMAC — từ chối khởi động khi thiếu cấu hình
+
+- Khoá mặc định **CHỈ-DÙNG-DEV** (`DEV_HMAC_SECRET`) chỉ được dùng khi `NODE_ENV` **đúng bằng**
+  `development` hoặc `test` (danh sách cho phép `DEV_ONLY_ENVS`). Khi dùng, máy chủ in cảnh báo ra `stderr`.
+- `NODE_ENV` **chưa đặt** hoặc mang giá trị khác (`production`, `staging`…) mà **thiếu**
+  `SIGNATURE_HMAC_SECRET` ⇒ ứng dụng **TỪ CHỐI KHỞI ĐỘNG** (`assertSignatureSecret()` ném lỗi, được
+  gọi trong `src/server.ts` cùng `assertProductionSecrets()`).
+- `NODE_ENV` **bỏ giá trị mặc định** trong schema (`z.string().optional()`): chưa đặt ≠ "development".
+  Mọi giá trị đều được chấp nhận để không chặn oan triển khai.
+- Hàm kiểm tra thuần `signatureSecretProblem(nodeEnv, provider, hmacSecret)` để dễ kiểm thử.
+- Có test cho: `production` thiếu khoá và `NODE_ENV` chưa đặt thiếu khoá, cả hai đều từ chối khởi động.
+
+### E3 (Q3). Lệch sequence mã hồ sơ
+
+- **Nguyên nhân gốc:** `backend/prisma/seed.ts` chèn mã hồ sơ **viết tay** (`MC-2026-000120`… từ
+  `prisma/seed-data.json`) mà không đẩy `application_code_seq`; thêm nữa `TRUNCATE … RESTART IDENTITY`
+  (seed.ts, dòng ~213) và `setval(..., 1, false)` khi đổi năm (migration `20261017010000`) làm sequence tụt lại.
+- **Sửa gốc (chỉ THÊM, bằng migration mới `20261026010000_sync_ma_ho_so_sequence`):** hàm dùng chung
+  `sync_ma_ho_so_sequence(nam)` đặt sequence = max mã hồ sơ của năm đó. Hàm này được gọi ở **cuối seed**,
+  ở **bước chuẩn bị test** (`tests/global-setup.ts`) và **sau khi khôi phục sao lưu**
+  (`tests/db/backup-restore.test.ts`).
+- **Bảo vệ:** thêm ca kiểm thử khẳng định với mọi năm `sequence ≥ max mã hồ sơ` của năm đó và chèn 5
+  mã mới không trùng.
+- CSDL dev chỉ được **SELECT** để kiểm tra (không sửa). Nếu dev lệch thì chỉ ghi báo cáo.
+
+---
+
 

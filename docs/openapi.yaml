@@ -2443,13 +2443,17 @@ components:
             success: false
             error: { code: DOCUMENT_REVOKED, message: "Văn bản đã bị thu hồi nên không thể tải về." }
     RateLimited:
-      description: "Vượt giới hạn tần suất"
+      description: "Vượt giới hạn tần suất (HTTP 429). Tiêu đề `Retry-After` cho biết số giây nên chờ."
+      headers:
+        Retry-After:
+          description: "Số giây tối thiểu nên chờ trước khi thử lại"
+          schema: { type: integer, minimum: 1 }
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
           example:
             success: false
-            error: { code: VALIDATION_ERROR, message: "Bạn thao tác quá nhanh. Vui lòng thử lại sau." }
+            error: { code: RATE_LIMITED, message: "Bạn thao tác quá nhanh. Vui lòng thử lại sau." }
   parameters:
     Page:
       name: page
@@ -2598,7 +2602,7 @@ components:
         Mã lỗi nghiệp vụ. Ánh xạ HTTP: UNAUTHORIZED 401, FORBIDDEN_SCOPE 403, NOT_FOUND 404,
         INVALID_TRANSITION 409, DUPLICATE_ACTION 409, ALREADY_PROCESSED 409,
         VALIDATION_ERROR 422, MISSING_ATTACHMENT 422, OTP_INVALID 400,
-        OTP_EXPIRED 410, DOCUMENT_REVOKED 410, OTP_LOCKED 423.
+        OTP_EXPIRED 410, DOCUMENT_REVOKED 410, OTP_LOCKED 423, RATE_LIMITED 429.
       enum:
         - UNAUTHORIZED
         - FORBIDDEN_SCOPE
@@ -2612,6 +2616,7 @@ components:
         - OTP_LOCKED
         - MISSING_ATTACHMENT
         - DOCUMENT_REVOKED
+        - RATE_LIMITED
         - NETWORK_ERROR
         - UNKNOWN
     Role:
