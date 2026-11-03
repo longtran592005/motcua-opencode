@@ -49,7 +49,7 @@ export function Header({ nav, homeTo = '/' }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40">
       {/* Thanh tiện ích */}
-      <div className="hidden bg-brand-heading text-white lg:block">
+      <div className="hidden bg-topbar text-topbar-foreground lg:block">
         <div className="container flex h-9 items-center justify-between text-xs">
           <div className="flex items-center gap-5">
             <span className="flex items-center gap-1.5">
@@ -78,7 +78,7 @@ export function Header({ nav, homeTo = '/' }: HeaderProps) {
               <Globe className="size-3.5" aria-hidden="true" />
               <Select defaultValue="vi">
                 <SelectTrigger
-                  className="h-6 w-24 border-white/30 bg-transparent text-xs text-white"
+                  className="h-6 w-24 border-white/30 bg-transparent text-xs text-topbar-foreground"
                   aria-label="Chọn ngôn ngữ"
                 >
                   <SelectValue />

@@ -37,19 +37,19 @@ export function ChatbotWidget() {
             role="dialog"
             aria-label="Trợ lý ảo hỏi đáp thủ tục"
           >
-            <div className="flex items-center gap-3 bg-brand-heading px-4 py-3 text-white">
+            <div className="flex items-center gap-3 bg-topbar px-4 py-3 text-topbar-foreground">
               <span className="flex size-9 items-center justify-center rounded-full bg-white/15">
                 <Bot className="size-5" aria-hidden="true" />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold">Trợ lý ảo Một cửa</p>
-                <p className="truncate text-xs text-white/70">Hỏi đáp về thủ tục hành chính</p>
+                <p className="truncate text-xs text-hero-muted">Hỏi đáp về thủ tục hành chính</p>
               </div>
               {messages.length > 0 && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-white/80 hover:bg-white/15 hover:text-white"
+                  className="text-topbar-foreground hover:bg-white/15 hover:text-topbar-foreground"
                   onClick={lamMoi}
                   aria-label="Bắt đầu cuộc trò chuyện mới"
                 >
@@ -59,7 +59,7 @@ export function ChatbotWidget() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white/80 hover:bg-white/15 hover:text-white"
+                className="text-topbar-foreground hover:bg-white/15 hover:text-topbar-foreground"
                 onClick={() => setOpen(false)}
                 aria-label="Đóng trợ lý ảo"
               >

@@ -11,130 +11,155 @@
     --radius: 0.5rem;
 
     /* Nền & chữ cơ bản */
-    --background: 0 0% 100%;
-    --foreground: 211 45% 18%;
+    --background: 210 67% 97.6%; /* #F5F9FD */
+    --foreground: 211 71% 14.7%; /* #0B2540 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 211 45% 18%;
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 211 71% 14.7%; /* #0B2540 */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 211 45% 18%;
+    --popover-foreground: 211 71% 14.7%;
 
-    /* Màu chính: xanh dương sáng #0E9AE0 */
-    --primary: 200 88% 47%;
+    /* Màu chính: xanh dương #0A7BBE, chữ trên nút trắng */
+    --primary: 202 90% 39.2%; /* #0A7BBE */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 206 62% 95%;
-    --secondary-foreground: 211 82% 24%;
+    --secondary: 207 75% 93.7%; /* #E3F0FB */
+    --secondary-foreground: 211 71% 14.7%;
 
-    --muted: 210 34% 96%;
-    --muted-foreground: 211 22% 44%;
+    --muted: 210 50% 96.1%; /* #F0F5FA */
+    --muted-foreground: 211 30% 34.5%; /* #3E5772 */
 
-    --accent: 206 68% 93%;
-    --accent-foreground: 211 82% 24%;
+    --accent: 207 75% 93.7%;
+    --accent-foreground: 211 82% 23.9%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 67% 38.2%; /* #A32020 */
     --destructive-foreground: 0 0% 100%;
-    --destructive-soft: 0 86% 96%;
+    --destructive-soft: 0 81% 95.9%; /* #FDECEC */
 
-    --success: 142 66% 36%;
+    --success: 137 67% 23.9%; /* #14662B */
     --success-foreground: 0 0% 100%;
-    --success-soft: 142 60% 94%;
+    --success-soft: 137 39% 92.9%; /* #E6F4EA */
 
-    --warning: 32 92% 44%;
+    --warning: 33 100% 27.1%; /* #8A4B00 */
     --warning-foreground: 0 0% 100%;
-    --warning-soft: 38 96% 94%;
+    --warning-soft: 37 100% 92.9%; /* #FFF1DB */
 
-    --border: 208 32% 88%;
-    --input: 208 32% 85%;
-    --ring: 200 88% 47%;
+    --border: 209 47% 88.8%; /* #D5E3F0 */
+    --input: 209 45% 84.9%; /* #C7D9EA */
+    --ring: 202 90% 39.2%; /* #0A7BBE */
 
     /* Thương hiệu */
-    --brand: 200 88% 47%; /* #0E9AE0 */
+    --brand: 202 90% 39.2%; /* #0A7BBE */
     --brand-foreground: 0 0% 100%;
-    --brand-dark: 203 87% 34%;
-    --brand-light: 199 90% 60%;
-    --brand-soft: 206 62% 95%; /* #EAF3FA */
-    --brand-heading: 211 82% 24%; /* #0B3C6F */
-    --surface: 206 62% 95%; /* #EAF3FA */
+    --brand-dark: 202 91% 33.5%; /* #086AA3 (hover) */
+    --brand-light: 199 78% 65.5%;
+    --brand-soft: 207 75% 93.7%; /* #E3F0FB */
+    --brand-heading: 211 82% 23.9%; /* #0B3C6F — chỉ dùng làm CHỮ tiêu đề */
+    --surface: 206 62% 94.9%; /* #EAF3FA */
+
+    /* Bề mặt thương hiệu đậm (thanh trên, chatbot, sidebar, footer) */
+    --topbar: 202 90% 39.2%; /* #0A7BBE */
+    --topbar-foreground: 0 0% 100%;
+
+    /* Hero: nền đậm gradient + chữ trắng */
+    --hero: 211 82% 23.9%; /* #0B3C6F */
+    --hero-2: 202 90% 39.2%; /* #0A7BBE (mút gradient) */
+    --hero-foreground: 0 0% 100%; /* #FFFFFF */
+    --hero-muted: 207 65% 93.3%; /* #E3EFF9 */
+    --hero-card: 211 51% 33.1%; /* trắng 12% trên #0B3C6F */
+    --hero-card-foreground: 0 0% 100%;
 
     /* Trạng thái hồ sơ */
-    --status-draft: 215 16% 42%;
-    --status-draft-soft: 215 20% 95%;
-    --status-submitted: 200 88% 40%;
-    --status-submitted-soft: 200 88% 95%;
-    --status-pending: 32 92% 40%;
-    --status-pending-soft: 38 96% 94%;
-    --status-supplement: 22 88% 46%;
-    --status-supplement-soft: 26 96% 94%;
-    --status-rejected: 0 72% 48%;
-    --status-rejected-soft: 0 86% 96%;
-    --status-completed: 142 66% 34%;
-    --status-completed-soft: 142 60% 94%;
-    --status-cancelled: 220 9% 46%;
-    --status-cancelled-soft: 220 14% 95%;
+    --status-draft: 211 30% 34.5%; /* #3E5772 */
+    --status-draft-soft: 208 48% 93.9%;
+    --status-submitted: 204 87% 31%; /* #0A5C94 */
+    --status-submitted-soft: 207 75% 93.7%; /* #E3F0FB */
+    --status-pending: 33 100% 27.1%; /* #8A4B00 */
+    --status-pending-soft: 37 100% 92.9%; /* #FFF1DB */
+    --status-supplement: 30 96% 32.5%; /* #A35203 */
+    --status-supplement-soft: 28 100% 94.5%;
+    --status-rejected: 0 67% 38.2%; /* #A32020 */
+    --status-rejected-soft: 0 81% 95.9%; /* #FDECEC */
+    --status-completed: 137 67% 23.9%; /* #14662B */
+    --status-completed-soft: 137 39% 92.9%; /* #E6F4EA */
+    --status-cancelled: 212 20% 36.5%; /* #4A5C70 */
+    --status-cancelled-soft: 210 33% 92.9%;
   }
 
   .dark {
-    --background: 213 34% 9%;
-    --foreground: 208 30% 94%;
+    --background: 220 49% 8.4%; /* #0B1220 */
+    --foreground: 213 64% 94.5%; /* #E8F0FA */
 
-    --card: 213 30% 12%;
-    --card-foreground: 208 30% 94%;
+    --card: 219 46% 12.4%; /* #111B2E */
+    --card-foreground: 213 64% 94.5%;
 
-    --popover: 213 30% 12%;
-    --popover-foreground: 208 30% 94%;
+    --popover: 219 46% 12.4%;
+    --popover-foreground: 213 64% 94.5%;
 
-    --primary: 199 90% 54%;
-    --primary-foreground: 213 40% 10%;
+    --primary: 202 84% 62.2%; /* #4DB5F0 */
+    --primary-foreground: 207 87% 12.2%; /* #04223A */
 
-    --secondary: 212 26% 18%;
-    --secondary-foreground: 208 30% 94%;
+    --secondary: 216 41% 17.8%; /* #1B2A40 */
+    --secondary-foreground: 213 64% 94.5%;
 
-    --muted: 212 24% 17%;
-    --muted-foreground: 210 18% 68%;
+    --muted: 220 44% 14.7%;
+    --muted-foreground: 212 29% 73.9%; /* #A9BBD0 */
 
-    --accent: 210 30% 20%;
-    --accent-foreground: 208 30% 94%;
+    --accent: 218 42% 18.2%;
+    --accent-foreground: 213 64% 94.5%;
 
-    --destructive: 0 68% 56%;
-    --destructive-foreground: 0 0% 100%;
-    --destructive-soft: 0 34% 24%;
+    --destructive: 0 80% 74.9%; /* #F28C8C */
+    --destructive-foreground: 0 46% 11.6%; /* #2B1010 */
+    --destructive-soft: 354 53% 14.9%;
 
-    --success: 142 60% 48%;
-    --success-foreground: 213 40% 10%;
-    --success-soft: 142 28% 21%;
+    --success: 141 57% 72%; /* #8FE0AC */
+    --success-foreground: 145 62% 10.4%;
+    --success-soft: 144 41% 13.3%;
 
-    --warning: 32 88% 55%;
-    --warning-foreground: 213 40% 10%;
-    --warning-soft: 32 40% 22%;
+    --warning: 38 100% 73.9%; /* #FFCE7A */
+    --warning-foreground: 36 65% 12.2%;
+    --warning-soft: 39 49% 13.7%;
 
-    --border: 212 22% 24%;
-    --input: 212 22% 26%;
-    --ring: 199 90% 54%;
+    --border: 217 36% 23.1%; /* #263650 */
+    --input: 210 31% 26.3%; /* #2E4358 */
+    --ring: 202 84% 62.2%;
 
-    --brand: 199 90% 54%;
-    --brand-foreground: 213 40% 10%;
-    --brand-dark: 203 80% 40%;
-    --brand-light: 199 92% 68%;
-    --brand-soft: 212 26% 18%;
-    --brand-heading: 205 80% 78%;
-    --surface: 212 26% 15%;
+    --brand: 202 84% 62.2%;
+    --brand-foreground: 207 87% 12.2%; /* #04223A */
+    --brand-dark: 202 66% 54.7%;
+    --brand-light: 204 84% 76.1%;
+    --brand-soft: 220 45% 15.7%;
+    --brand-heading: 0 0% 100%; /* #FFFFFF — tiêu đề ở chế độ tối */
+    --surface: 219 47% 15.5%;
 
-    --status-draft: 215 16% 72%;
-    --status-draft-soft: 215 18% 24%;
-    --status-submitted: 200 88% 68%;
-    --status-submitted-soft: 200 40% 22%;
-    --status-pending: 38 92% 66%;
-    --status-pending-soft: 32 40% 22%;
-    --status-supplement: 26 90% 66%;
-    --status-supplement-soft: 24 40% 22%;
-    --status-rejected: 0 80% 70%;
-    --status-rejected-soft: 0 34% 24%;
-    --status-completed: 142 62% 62%;
-    --status-completed-soft: 142 28% 21%;
-    --status-cancelled: 220 12% 66%;
-    --status-cancelled-soft: 220 14% 24%;
+    /* Bề mặt đậm thương hiệu */
+    --topbar: 216 49% 15.3%; /* #14233A */
+    --topbar-foreground: 213 64% 94.5%; /* #E8F0FA */
+
+    /* Hero nền đậm */
+    --hero: 213 66% 17.5%; /* #0F2A4A */
+    --hero-2: 210 69% 24.9%; /* #14406B */
+    --hero-foreground: 0 0% 100%;
+    --hero-muted: 210 71% 90.6%; /* #D6E7F8 */
+    --hero-card: 212 50% 27.5%; /* trắng 12% trên #0F2A4A */
+    --hero-card-foreground: 0 0% 100%;
+
+    /* Trạng thái hồ sơ */
+    --status-draft: 212 31% 78.4%;
+    --status-draft-soft: 214 33% 17.6%;
+    --status-submitted: 201 86% 72.4%;
+    --status-submitted-soft: 203 63% 17.8%;
+    --status-pending: 38 100% 77.1%;
+    --status-pending-soft: 37 62% 13.3%;
+    --status-supplement: 26 100% 77.8%;
+    --status-supplement-soft: 28 59% 13.5%;
+    --status-rejected: 4 100% 81.8%;
+    --status-rejected-soft: 357 53% 15.9%;
+    --status-completed: 140 61% 76.7%;
+    --status-completed-soft: 143 48% 12.7%;
+    --status-cancelled: 211 28% 75.5%;
+    --status-cancelled-soft: 214 33% 17.6%;
   }
 }
 
@@ -159,6 +184,23 @@
   h5,
   h6 {
     @apply text-brand-heading font-bold;
+  }
+
+  /* Trên bề mặt đậm thương hiệu (header, footer, hero, login): tiêu đề kế thừa
+     màu trắng của bề mặt thay vì màu heading của nền sáng. */
+  header h1,
+  header h2,
+  header h3,
+  footer h1,
+  footer h2,
+  footer h3,
+  .hero-surface h1,
+  .hero-surface h2,
+  .hero-surface h3,
+  .bg-topbar h1,
+  .bg-topbar h2,
+  .bg-topbar h3 {
+    color: inherit;
   }
 
   :focus-visible {
@@ -189,6 +231,12 @@
 
   .card-tbu {
     @apply rounded-lg border bg-card shadow-card;
+  }
+
+  /* Bề mặt hero: nền gradient đậm, chữ trắng (cả 2 chế độ) */
+  .hero-surface {
+    @apply text-hero-foreground;
+    background: linear-gradient(135deg, hsl(var(--hero)) 0%, hsl(var(--hero-2)) 100%);
   }
 
   .link-brand {

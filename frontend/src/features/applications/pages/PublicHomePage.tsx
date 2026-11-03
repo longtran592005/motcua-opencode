@@ -49,7 +49,7 @@ export function PublicHomePage() {
   return (
     <div className="space-y-12 pb-12">
       {/* Hero */}
-      <section className="bg-brand-heading text-white">
+      <section className="hero-surface">
         <div className="container grid gap-8 py-12 lg:grid-cols-2 lg:items-center lg:py-16">
           <div className="space-y-6">
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold">
@@ -59,7 +59,7 @@ export function PublicHomePage() {
             <h1 className="text-3xl font-extrabold leading-tight sm:text-4xl">
               Cổng dịch vụ một cửa điện tử
             </h1>
-            <p className="max-w-xl text-white/80">
+            <p className="max-w-xl text-hero-muted">
               Nộp hồ sơ hành chính, theo dõi tiến trình phê duyệt và nhận văn bản điện tử có mã xác
               thực — tất cả trong một nền tảng duy nhất dành cho sinh viên và cán bộ nhà trường.
             </p>
@@ -70,7 +70,7 @@ export function PublicHomePage() {
                   Đăng nhập để nộp hồ sơ
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
+              <Button asChild size="lg" variant="outline" className="border-white/30 bg-transparent text-hero-foreground hover:bg-white/10 hover:text-white">
                 <Link to="/thu-vien-bieu-mau">Thư viện biểu mẫu</Link>
               </Button>
             </div>
@@ -81,7 +81,7 @@ export function PublicHomePage() {
             >
               <div className="relative flex-1">
                 <QrCode
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/60"
+                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-hero-muted"
                   aria-hidden="true"
                 />
                 <Input
@@ -101,13 +101,13 @@ export function PublicHomePage() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             {DIEM_NOI_BAT.map((item) => (
-              <Card key={item.tieuDe} className="border-white/15 bg-white/5 text-white backdrop-blur">
+              <Card key={item.tieuDe} className="border-white/10 bg-hero-card text-hero-card-foreground backdrop-blur">
                 <CardContent className="space-y-2">
                   <span className="flex size-10 items-center justify-center rounded-lg bg-white/15">
                     <item.icon className="size-5" aria-hidden="true" />
                   </span>
                   <p className="font-bold">{item.tieuDe}</p>
-                  <p className="text-xs text-white/75">{item.moTa}</p>
+                  <p className="text-xs text-hero-muted">{item.moTa}</p>
                 </CardContent>
               </Card>
             ))}

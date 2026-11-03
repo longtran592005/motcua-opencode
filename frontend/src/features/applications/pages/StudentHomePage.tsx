@@ -28,7 +28,7 @@ export function StudentHomePage() {
   return (
     <div className="container space-y-8 py-6 lg:py-8">
       {/* Banner chào mừng */}
-      <section className="overflow-hidden rounded-2xl bg-brand-heading text-white">
+      <section className="hero-surface overflow-hidden rounded-2xl">
         <div className="relative p-6 sm:p-8">
           <div
             className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-primary/30 blur-3xl"
@@ -36,9 +36,9 @@ export function StudentHomePage() {
           />
           <div className="relative max-w-2xl space-y-4">
             <div>
-              <p className="text-sm text-white/70">Xin chào,</p>
+              <p className="text-sm text-hero-muted">Xin chào,</p>
               <h1 className="text-2xl font-extrabold sm:text-3xl">{user?.hoTen}</h1>
-              <p className="mt-1 text-sm text-white/80">
+              <p className="mt-1 text-sm text-hero-muted">
                 {user?.maSo} · {user?.lopTen ?? '—'} · {user?.nganhTen ?? '—'}
               </p>
             </div>

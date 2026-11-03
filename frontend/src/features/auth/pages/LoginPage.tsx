@@ -94,7 +94,7 @@ export function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Khối giới thiệu thương hiệu */}
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-brand-heading p-10 text-white lg:flex">
+      <div className="hero-surface relative hidden flex-col justify-between overflow-hidden p-10 lg:flex">
         <div
           className="pointer-events-none absolute -right-24 -top-24 size-80 rounded-full bg-primary/30 blur-3xl"
           aria-hidden="true"
@@ -105,7 +105,7 @@ export function LoginPage() {
               <GraduationCap className="size-6" aria-hidden="true" />
             </span>
             <span className="leading-tight">
-              <span className="block text-xs font-semibold uppercase tracking-wide text-white/70">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-hero-muted">
                 {SCHOOL.tenVietTat}
               </span>
               <span className="block text-lg font-extrabold">Cổng {SCHOOL.portal}</span>
@@ -117,7 +117,7 @@ export function LoginPage() {
           <h1 className="text-3xl font-extrabold leading-snug">
             Nộp hồ sơ và theo dõi tiến độ xử lý trực tuyến
           </h1>
-          <p className="text-white/75">
+          <p className="text-hero-muted">
             Hệ thống một cửa điện tử của {SCHOOL.ten} giúp sinh viên gửi yêu cầu, theo dõi phê
             duyệt nhiều cấp và nhận văn bản có mã xác thực.
           </p>
@@ -128,14 +128,14 @@ export function LoginPage() {
               'Nhận văn bản điện tử có mã QR xác thực',
             ].map((item) => (
               <li key={item} className="flex items-center gap-2.5">
-                <ShieldCheck className="size-4 shrink-0 text-white/70" aria-hidden="true" />
+                <ShieldCheck className="size-4 shrink-0 text-hero-muted" aria-hidden="true" />
                 {item}
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="relative text-xs text-white/60">
+        <p className="relative text-xs text-hero-muted">
           Hotline {SCHOOL.hotline} · {SCHOOL.email}
         </p>
       </div>
