@@ -28,7 +28,7 @@ import { prisma } from '../../lib/prisma'
 import { AppError } from '../../lib/errors'
 import { assertInScope, type ScopeUser } from '../../lib/scope'
 import { getSignatureProvider, payloadHash, signaturePayloadOf } from '../../lib/signature'
-import { addHours, naturalAssigneeOf, pickAssignee, stepAfter } from '../shared/workflow'
+import { addHours, naturalAssigneeOf, pickAssignee, requireAssignee, stepAfter } from '../shared/workflow'
 import { activeDelegationFor } from '../delegations/service'
 import { consumeOtp } from '../otp/service'
 import { issueDocument } from '../documents/issuer'
@@ -457,10 +457,15 @@ async function runTransition(
     const steps = snapshot.steps
     if (!steps.length) throw AppError.validation('Luồng duyệt chưa có bước xử lý nào.')
     const first = steps[0]
-    const assigneeId = await pickAssignee(first, {
-      classId: app.classId,
-      facultyId: app.facultyId,
-    })
+    const assignees = new Map(
+      await Promise.all(
+        steps.map(async (step) => [
+          step.order,
+          await requireAssignee(step, { classId: app.classId, facultyId: app.facultyId }),
+        ] as const),
+      ),
+    )
+    const assigneeId = assignees.get(first.order)!
 
     await tx.stepInstance.createMany({
       data: steps.map((s) => ({
@@ -562,7 +567,7 @@ async function runTransition(
     const quayVe = steps.find((s) => s.order === quayVeOrder) ?? steps[0]
 
     const duLieuMoi = { ...((app.duLieu ?? {}) as Record<string, unknown>), ...(input.duLieu ?? {}) }
-    const assigneeId = await pickAssignee(quayVe, {
+    const assigneeId = await requireAssignee(quayVe, {
       classId: app.classId,
       facultyId: app.facultyId,
     })
@@ -816,7 +821,7 @@ async function runTransition(
   }
 
   if (next) {
-    const assigneeId = await pickAssignee(next, {
+    const assigneeId = await requireAssignee(next, {
       classId: app.classId,
       facultyId: app.facultyId,
     })

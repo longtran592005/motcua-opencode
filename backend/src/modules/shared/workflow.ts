@@ -1,5 +1,6 @@
 import type { Role } from '@prisma/client'
 import { prisma } from '../../lib/prisma'
+import { AppError } from '../../lib/errors'
 import { activeDelegationGiven } from '../delegations/service'
 
 export function addHours(base: Date, hours: number): Date {
@@ -55,7 +56,33 @@ export async function pickAssignee(
   at: Date = new Date(),
 ): Promise<string | null> {
   const natural = await naturalAssigneeOf(step, opts)
-  if (!natural) return null
+  if (!natural) {
+    if (step.role === 'CO_VAN' || step.role === 'TRUONG_KHOA') return null
+    const generic = await prisma.user.findFirst({
+      where: { role: step.role, trangThai: 'ACTIVE', deletedAt: null },
+      select: { id: true },
+    })
+    return generic?.id ?? null
+  }
   const uyQuyen = await activeDelegationGiven(natural, step.role, at)
   return uyQuyen ? uyQuyen.nguoiNhanId : natural
+}
+
+export async function requireAssignee(
+  step: { role: Role },
+  opts: { classId: string | null; facultyId: string | null },
+  at: Date = new Date(),
+): Promise<string> {
+  const assignee = await pickAssignee(step, opts, at)
+  if (assignee) return assignee
+
+  const roleLabel: Partial<Record<Role, string>> = {
+    CO_VAN: 'Cố vấn học tập',
+    TRUONG_KHOA: 'Trưởng khoa',
+    PHONG_DAO_TAO: 'Phòng Đào tạo',
+  }
+  throw AppError.validation(
+    `Chưa có ${roleLabel[step.role] ?? step.role} cho hồ sơ này, vui lòng liên hệ Phòng Đào tạo.`,
+    { vaiTro: step.role },
+  )
 }
