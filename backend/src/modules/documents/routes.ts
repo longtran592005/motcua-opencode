@@ -8,6 +8,8 @@ import { send, sendPage } from '../../lib/envelope'
 import { requestContext, requireUser } from '../../lib/context'
 import { AppError } from '../../lib/errors'
 import * as service from './service'
+import { createFileToken, readFileToken } from './fileToken'
+import { readPdf } from './pdf'
 
 const idParam = z.object({ id: z.string().min(1).max(200) })
 const revokeBody = z.object({
@@ -15,6 +17,7 @@ const revokeBody = z.object({
 })
 
 export const documentRouter: Router = Router()
+export const fileRouter: Router = Router()
 
 documentRouter.use(authenticate)
 
@@ -67,5 +70,33 @@ documentRouter.get(
     }
     const { signedDocumentDto } = await import('./dto')
     send(res, signedDocumentDto(doc, { mask: false }))
+  }),
+)
+
+documentRouter.get(
+  '/:id/export',
+  validate(idParam, 'params'),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params as { id: string }
+    const doc = await service.loadDocument(id)
+    const user = requireUser(req)
+    if (doc.application.applicantId !== user.id && user.role === 'SINH_VIEN') {
+      throw AppError.forbidden('Bạn không có quyền xuất văn bản này.')
+    }
+    if (!doc.pdfStorageKey) throw new AppError('PDF_NOT_READY', 'Văn bản chưa có tệp PDF.')
+    await service.logDownload({ user, ...requestContext(req) }, id, 'export')
+    send(res, { url: `/api/v1/files/${createFileToken(doc.id)}`, expiresInMinutes: 5 })
+  }),
+)
+
+fileRouter.get(
+  '/:fileToken',
+  asyncHandler(async (req, res) => {
+    const parsed = readFileToken(req.params.fileToken)
+    if (!parsed) throw new AppError('INVALID_FILE_TOKEN', 'Liên kết tải tệp không hợp lệ hoặc đã hết hạn.')
+    const doc = await service.loadDocument(parsed.documentId)
+    if (!doc.pdfStorageKey) throw new AppError('PDF_NOT_READY', 'Văn bản chưa có tệp PDF.')
+    const bytes = await readPdf(doc.pdfStorageKey)
+    res.type('application/pdf').set('Content-Disposition', `attachment; filename="${doc.soVanBan}.pdf"`).send(bytes)
   }),
 )

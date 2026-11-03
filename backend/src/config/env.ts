@@ -76,6 +76,11 @@ const schema = z.object({
    * Mặc định suy ra theo NODE_ENV.
    */
   OTP_CHANNEL: z.enum(['CONSOLE', 'CAPTURE', 'EMAIL', 'SMS', 'NONE']).optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  MAIL_FROM: z.string().optional(),
 
   /* ------------------------------------------------------------------ *
    * Giai đoạn 4 — job SLA

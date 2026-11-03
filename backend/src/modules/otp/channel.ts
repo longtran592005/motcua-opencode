@@ -12,7 +12,9 @@
  *    gửi và báo lỗi cấu hình (503), thay vì âm thầm bỏ qua.
  */
 import { otpChannelName } from '../../config/env'
+import { env } from '../../config/env'
 import { AppError } from '../../lib/errors'
+import nodemailer from 'nodemailer'
 
 export interface OtpMessage {
   challengeId: string
@@ -68,7 +70,34 @@ class ConsoleChannel implements NotificationChannel {
   }
 }
 
-/* --------------------------- EMAIL / SMS / NONE -------------------------- */
+/* ---------------------------------- EMAIL -------------------------------- */
+
+class EmailChannel implements NotificationChannel {
+  readonly ten = 'EMAIL'
+
+  async guiOtp(msg: OtpMessage): Promise<void> {
+    if (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASS || !env.MAIL_FROM || !msg.to.email) {
+      throw AppError.configuration(
+        'Thiếu cấu hình SMTP hoặc email người nhận OTP.',
+        { required: ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'MAIL_FROM'] },
+      )
+    }
+    const transporter = nodemailer.createTransport({
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      secure: env.SMTP_PORT === 465,
+      auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
+    })
+    await transporter.sendMail({
+      from: env.MAIL_FROM,
+      to: msg.to.email,
+      subject: `Mã OTP ký hồ sơ ${msg.maHoSo}`,
+      text: `Mã OTP của bạn là ${msg.otp}. Mã hết hạn lúc ${msg.hetHanLuc.toLocaleString('vi-VN')}.`,
+    })
+  }
+}
+
+/* ----------------------------- SMS / NONE ------------------------------- */
 
 class UnconfiguredChannel implements NotificationChannel {
   constructor(readonly ten: string) {}
@@ -98,6 +127,8 @@ export function getOtpChannel(): NotificationChannel {
       return new ConsoleChannel()
     case 'CAPTURE':
       return new CaptureChannel()
+    case 'EMAIL':
+      return new EmailChannel()
     default:
       return new UnconfiguredChannel(otpChannelName())
   }

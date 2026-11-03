@@ -22,6 +22,9 @@ import { activeDelegationsReceived } from '../delegations/service'
 import { loadApplication, type Ctx } from '../applications/service'
 import type { applicationListQuery } from '../applications/schemas'
 import type { batchApproveBody } from './schemas'
+import { generatePdf } from '../documents/pdf'
+import { loadDocument } from '../documents/service'
+import { logger } from '../../lib/logger'
 
 type ListQuery = z.infer<typeof applicationListQuery>
 type BatchBody = z.infer<typeof batchApproveBody>
@@ -142,6 +145,25 @@ export async function approve(
     expectedStepOrder: si.stepOrder,
     idempotencyKey: idempotencyKey ?? null,
   })
+
+  if (outcome.vanBan) {
+    try {
+      const doc = await loadDocument(outcome.vanBan.id)
+      const generated = await generatePdf({
+        soVanBan: doc.soVanBan,
+        trichYeu: doc.trichYeu,
+        noiDung: doc.noiDung,
+        tokenXacThuc: doc.tokenXacThuc,
+        signatures: doc.signatures,
+      })
+      await prisma.signedDocument.update({
+        where: { id: doc.id },
+        data: { pdfStorageKey: generated.storageKey, maBamSha256: generated.sha256 },
+      })
+    } catch (error) {
+      logger.error({ err: error, documentId: outcome.vanBan.id }, 'Không thể sinh PDF văn bản')
+    }
+  }
 
   await baoSauDuyet(ctx, app, outcome)
 

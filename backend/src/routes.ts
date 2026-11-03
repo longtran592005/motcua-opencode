@@ -6,7 +6,7 @@ import { otpRouter } from './modules/otp/routes'
 import { notificationRouter } from './modules/notifications'
 import { auditRouter } from './modules/audit'
 import { catalogRouter } from './modules/catalog'
-import { documentRouter } from './modules/documents/routes'
+import { documentRouter, fileRouter } from './modules/documents/routes'
 import { libraryRouter } from './modules/library'
 import { requestTypeRouter } from './modules/requestTypes'
 import { workflowRouter } from './modules/workflows'
@@ -26,6 +26,7 @@ apiRouter.use('/notifications', notificationRouter)
 apiRouter.use('/audit-logs', auditRouter)
 apiRouter.use('/catalog', catalogRouter)
 apiRouter.use('/documents', documentRouter)
+apiRouter.use('/files', fileRouter)
 apiRouter.use('/library', libraryRouter)
 apiRouter.use('/request-types', requestTypeRouter)
 apiRouter.use('/workflows', workflowRouter)
