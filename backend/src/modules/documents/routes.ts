@@ -7,9 +7,10 @@ import { asyncHandler } from '../../middleware/errorHandler'
 import { send, sendPage } from '../../lib/envelope'
 import { requestContext, requireUser } from '../../lib/context'
 import { AppError } from '../../lib/errors'
+import { prisma } from '../../lib/prisma'
 import * as service from './service'
 import { createFileToken, readFileToken } from './fileToken'
-import { readPdf } from './pdf'
+import { generatePdf, readPdf } from './pdf'
 
 const idParam = z.object({ id: z.string().min(1).max(200) })
 const revokeBody = z.object({
@@ -86,6 +87,29 @@ documentRouter.get(
     if (!doc.pdfStorageKey) throw new AppError('PDF_NOT_READY', 'Văn bản chưa có tệp PDF.')
     await service.logDownload({ user, ...requestContext(req) }, id, 'export')
     send(res, { url: `/api/v1/files/${createFileToken(doc.id)}`, expiresInMinutes: 5 })
+  }),
+)
+
+documentRouter.post(
+  '/:id/regenerate',
+  requireRole('ADMIN', 'PHONG_DAO_TAO'),
+  idempotent(),
+  validate(idParam, 'params'),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params as { id: string }
+    const doc = await service.loadDocument(id)
+    const generated = await generatePdf({
+      soVanBan: doc.soVanBan,
+      trichYeu: doc.trichYeu,
+      noiDung: doc.noiDung,
+      tokenXacThuc: doc.tokenXacThuc,
+      signatures: doc.signatures,
+    })
+    await prisma.signedDocument.update({
+      where: { id: doc.id },
+      data: { pdfStorageKey: generated.storageKey, maBamSha256: generated.sha256 },
+    })
+    send(res, { id: doc.id, pdfStorageKey: generated.storageKey })
   }),
 )
 
