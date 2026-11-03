@@ -8,7 +8,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { QrScanner } from '../components/QrScanner'
 import { useRecentDocuments } from '../hooks/useVerify'
 import { formatDate } from '@/lib/formatters'
-import { maskName } from '@/lib/utils'
 import { DOCUMENT_STATUS_LABELS } from '@/types'
 
 /** Trang tra cứu văn bản: nhập mã/số văn bản hoặc quét mã QR. */
@@ -104,7 +103,7 @@ export function VerifyLookupPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{doc.soVanBan}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {doc.trichYeu} · {maskName(doc.sinhVien.hoTen)}
+                        {doc.trichYeu} · {doc.sinhVien.hoTen}
                       </p>
                     </div>
                     <span className="text-xs text-muted-foreground">{formatDate(doc.ngayCap)}</span>

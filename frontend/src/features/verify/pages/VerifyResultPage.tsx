@@ -12,7 +12,6 @@ import { FileHashCompare } from '../components/FileHashCompare'
 import { QrScanner } from '../components/QrScanner'
 import { useVerifyByToken } from '../hooks/useVerify'
 import { formatDate, formatDateTime } from '@/lib/formatters'
-import { maskMssv, maskName } from '@/lib/utils'
 import { DOCUMENT_STATUS_LABELS } from '@/types'
 
 /** Trang kết quả xác thực văn bản (truy cập qua mã QR hoặc nhập mã). */
@@ -115,7 +114,7 @@ export function VerifyResultPage() {
                     Người được cấp
                   </dt>
                   <dd className="text-sm font-semibold">
-                    {maskName(data.vanBan.sinhVien.hoTen)} · {maskMssv(data.vanBan.sinhVien.mssv)}
+                    {data.vanBan.sinhVien.hoTen} · {data.vanBan.sinhVien.mssv}
                   </dd>
                 </div>
                 <div>

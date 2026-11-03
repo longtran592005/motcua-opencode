@@ -29,7 +29,6 @@ import { useIssuedDocuments, useRevokeDocument } from '@/features/documents/hook
 import { useDebounce } from '@/hooks/useDebounce'
 import { PAGE_SIZE } from '@/lib/constants'
 import { formatDate, formatDateTime } from '@/lib/formatters'
-import { maskName } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { DOCUMENT_STATUS_LABELS, type DocumentStatus, type SignedDocument } from '@/types'
 
@@ -91,7 +90,7 @@ export function IssuedDocumentsPage() {
       header: 'Người được cấp',
       cell: (row) => (
         <div className="min-w-0">
-          <p className="truncate text-sm">{maskName(row.sinhVien.hoTen)}</p>
+          <p className="truncate text-sm">{row.sinhVien.hoTen}</p>
           <p className="text-xs text-muted-foreground">{row.sinhVien.khoa}</p>
         </div>
       ),
