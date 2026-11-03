@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import PDFDocument from 'pdfkit'
 import QRCode from 'qrcode'
-import { env } from '../../config/env'
+import { publicBaseUrl } from '../../config/env'
 import { randomToken } from '../../lib/crypto'
 
 const storageRoot = join(process.cwd(), 'storage', 'documents')
@@ -52,7 +52,7 @@ export interface GeneratedPdf {
 
 /** Sinh PDF thật, nhúng font Unicode nếu máy có font phù hợp và chèn QR xác thực. */
 export async function generatePdf(input: PdfDocumentInput): Promise<GeneratedPdf> {
-  const qrUrl = `${env.PUBLIC_DOMAIN.replace(/\/$/, '')}/xac-thuc/${input.tokenXacThuc}`
+  const qrUrl = `${publicBaseUrl.replace(/\/$/, '')}/xac-thuc/${input.tokenXacThuc}`
   const qr = await QRCode.toBuffer(qrUrl, { errorCorrectionLevel: 'M', width: 150, margin: 1 })
   const pdf = new PDFDocument({ size: 'A4', margin: 56 })
   const font = findFont()

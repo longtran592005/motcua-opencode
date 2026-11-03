@@ -38,6 +38,7 @@ const schema = z.object({
 
   /** Miền công khai ghép vào liên kết QR xác thực văn bản. */
   PUBLIC_DOMAIN: z.string().default('http://localhost:5173'),
+  PUBLIC_BASE_URL: z.string().optional(),
   /** Danh sách origin được phép CORS, phân tách bằng dấu phẩy. */
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
 
@@ -186,3 +187,5 @@ export function otpChannelName(): 'CONSOLE' | 'CAPTURE' | 'EMAIL' | 'SMS' | 'NON
 export const corsOrigins = env.CORS_ORIGINS.split(',')
   .map((s) => s.trim())
   .filter(Boolean)
+
+export const publicBaseUrl = env.PUBLIC_BASE_URL ?? env.PUBLIC_DOMAIN
