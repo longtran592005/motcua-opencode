@@ -8,6 +8,7 @@ export const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8080/a
 )
 
 const TOKEN_KEY = 'motcua.accessToken'
+const REFRESH_TOKEN_KEY = 'motcua.refreshToken'
 
 export function getToken(): string | null {
   try {
@@ -23,6 +24,23 @@ export function setToken(token: string | null): void {
     else localStorage.removeItem(TOKEN_KEY)
   } catch {
     /* bỏ qua */
+  }
+}
+
+export function getRefreshToken(): string | null {
+  try {
+    return localStorage.getItem(REFRESH_TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setRefreshToken(token: string | null): void {
+  try {
+    if (token) localStorage.setItem(REFRESH_TOKEN_KEY, token)
+    else localStorage.removeItem(REFRESH_TOKEN_KEY)
+  } catch {
+    /* Bộ nhớ phiên có thể bị trình duyệt chặn. */
   }
 }
 
@@ -63,6 +81,14 @@ function generateIdempotencyKey(): string {
 
 /** Gọi API thật; chuyển mã lỗi HTTP thành `ApiError` với `ErrorCode` nghiệp vụ. */
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return requestOnce<T>(path, options, true)
+}
+
+async function requestOnce<T>(
+  path: string,
+  options: RequestOptions,
+  canRefresh: boolean,
+): Promise<T> {
   const { method = 'GET', body, query, signal } = options
 
   // Tránh gửi /auth/me qua mạng khi chưa có token để không gây lỗi 401 console
@@ -95,6 +121,31 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const payload = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
 
   if (!response.ok) {
+    if (response.status === 401 && canRefresh && !path.startsWith('/auth/')) {
+      const refreshToken = getRefreshToken()
+      if (refreshToken) {
+        try {
+          const refreshResponse = await fetch(buildUrl('/auth/refresh'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken }),
+          })
+          if (refreshResponse.ok) {
+            const refreshPayload = (await refreshResponse.json()) as {
+              data?: { token?: string; refreshToken?: string }
+            }
+            const session = refreshPayload.data
+            if (session?.token) {
+              setToken(session.token)
+              if (session.refreshToken) setRefreshToken(session.refreshToken)
+              return requestOnce<T>(path, options, false)
+            }
+          }
+        } catch {
+          // Phiên sẽ được coi là hết hạn ở lỗi 401 ban đầu.
+        }
+      }
+    }
     const errorObj = payload.error as Record<string, unknown> | undefined
     const code =
       (errorObj?.code as ErrorCode | undefined) ??
@@ -105,6 +156,17 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       (payload.message as string | undefined) ??
       'Đã xảy ra lỗi khi xử lý yêu cầu.'
     const details = (errorObj?.details ?? payload.chiTiet) as Record<string, unknown> | undefined
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('Retry-After')
+      throw new ApiError(
+        'RATE_LIMITED' as ErrorCode,
+        retryAfter
+          ? `Bạn thao tác quá nhanh. Vui lòng thử lại sau ${retryAfter} giây.`
+          : 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.',
+        response.status,
+        { ...(details ?? {}), retryAfter },
+      )
+    }
     throw new ApiError(code, message, response.status, details)
   }
 
@@ -129,6 +191,7 @@ function mapStatus(status: number): ErrorCode {
   if (status === 404) return 'NOT_FOUND'
   if (status === 409) return 'INVALID_TRANSITION'
   if (status === 422) return 'VALIDATION_ERROR'
+  if (status === 429) return 'RATE_LIMITED' as ErrorCode
   return 'UNKNOWN'
 }
 

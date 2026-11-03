@@ -26,7 +26,7 @@ import type {
 } from '../contracts/catalog'
 import type { AuditService, LibraryService, NotificationService } from '../contracts/system'
 import type { DocumentTemplate, RequestType, Workflow } from '@/types'
-import { createHttpService, setToken } from './client'
+import { createHttpService, setRefreshToken, setToken } from './client'
 
 const q = (v: ApplicationListQuery | DocumentListQuery | undefined) =>
   (v ?? {}) as Record<string, unknown>
@@ -52,11 +52,15 @@ export const httpAuthService: AuthService = {
   async login(payload) {
     const session = await rawAuthService.login(payload)
     if (session?.token) setToken(session.token)
+    const refreshToken = (session as typeof session & { refreshToken?: string }).refreshToken
+    if (refreshToken) setRefreshToken(refreshToken)
     return session
   },
   async quickLogin(role) {
     const session = await rawAuthService.quickLogin(role)
     if (session?.token) setToken(session.token)
+    const refreshToken = (session as typeof session & { refreshToken?: string }).refreshToken
+    if (refreshToken) setRefreshToken(refreshToken)
     return session
   },
   async logout() {
@@ -64,6 +68,7 @@ export const httpAuthService: AuthService = {
       await rawAuthService.logout()
     } finally {
       setToken(null)
+      setRefreshToken(null)
     }
   },
 }

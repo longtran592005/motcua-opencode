@@ -20,6 +20,13 @@ export const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? 'true') !== 'false'
 
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
 
+const realServiceGroups = new Set(
+  (import.meta.env.VITE_REAL_SERVICES ?? '')
+    .split(',')
+    .map((group: string) => group.trim().toLowerCase())
+    .filter(Boolean),
+)
+
 const mockServices: ServiceRegistry = {
   auth: mockAuthService,
   applications: mockApplicationService,
@@ -41,7 +48,29 @@ const mockServices: ServiceRegistry = {
 }
 
 /** Bộ service đang được dùng — component chỉ truy cập qua `services`. */
-export const services: ServiceRegistry = USE_MOCK ? mockServices : httpServices
+function selectService<K extends keyof ServiceRegistry>(group: string, key: K): ServiceRegistry[K] {
+  return !USE_MOCK && realServiceGroups.has(group) ? httpServices[key] : mockServices[key]
+}
+
+export const services: ServiceRegistry = {
+  auth: selectService('auth', 'auth'),
+  applications: selectService('applications', 'applications'),
+  approvals: selectService('approvals', 'approvals'),
+  otp: selectService('otp', 'otp'),
+  delegations: selectService('delegations', 'delegations'),
+  documents: selectService('documents', 'documents'),
+  templates: selectService('templates', 'templates'),
+  verify: selectService('verify', 'verify'),
+  notifications: selectService('notifications', 'notifications'),
+  audit: selectService('audit', 'audit'),
+  library: selectService('library', 'library'),
+  chat: selectService('chat', 'chat'),
+  requestTypes: selectService('requesttypes', 'requestTypes'),
+  workflows: selectService('workflows', 'workflows'),
+  users: selectService('admin', 'users'),
+  catalog: selectService('catalog', 'catalog'),
+  resetStore: mockServices.resetStore,
+}
 
 if (USE_MOCK) {
   // Khôi phục phiên đăng nhập của lần tải trước khi dùng dữ liệu giả lập.
