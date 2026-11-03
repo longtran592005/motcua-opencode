@@ -342,7 +342,7 @@ export function CatalogPage() {
       />
 
       <Card>
-        <CardContent className="p-4">
+        <CardContent className=">
           <Tabs defaultValue="khoa">
             <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
               <TabsTrigger value="khoa">

@@ -105,7 +105,7 @@ export function TemplateAdminPage() {
       />
 
       {isLoading ? (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-32 w-full" />
           ))}
@@ -119,10 +119,10 @@ export function TemplateAdminPage() {
           moTa="Bấm “Thêm mẫu văn bản” để tạo mẫu đầu tiên."
         />
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {data.map((tpl) => (
             <Card key={tpl.id} className="h-full">
-              <CardContent className="flex h-full flex-col gap-3 p-4">
+              <CardContent className="flex h-full flex-col gap-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 font-bold text-brand-heading">

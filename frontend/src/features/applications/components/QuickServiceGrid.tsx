@@ -44,13 +44,13 @@ export function QuickServiceGrid() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {isLoading
           ? [0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 w-full" />)
           : (data ?? []).map((rt) => (
               <Link key={rt.id} to={`/don/moi/${rt.id}`} className="group">
                 <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:border-primary/50 group-hover:shadow-card">
-                  <CardContent className="flex h-full items-start gap-3 p-4">
+                  <CardContent className="flex h-full items-start gap-3">
                     <RequestTypeIcon icon={rt.icon} mau={rt.mau} />
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-brand-heading group-hover:text-primary">
@@ -78,7 +78,7 @@ export function QuickServiceGrid() {
         {TIEN_ICH.map((item) => (
           <Link key={item.label} to={item.to} className="group">
             <Card className="h-full border-dashed bg-secondary/40 transition-colors group-hover:border-primary/50">
-              <CardContent className="flex items-center gap-3 p-4">
+              <CardContent className="flex items-center gap-3">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background text-primary">
                   <item.icon className="size-5" aria-hidden="true" />
                 </span>

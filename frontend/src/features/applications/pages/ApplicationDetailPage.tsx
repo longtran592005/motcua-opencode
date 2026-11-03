@@ -202,7 +202,7 @@ export function ApplicationDetailPage() {
           </Card>
 
           <Card>
-            <CardContent className="space-y-2 p-4">
+            <CardContent className="space-y-2">
               {app.trangThai === 'COMPLETED' && (
                 <Button className="w-full gap-2" asChild>
                   <Link to={`/don/${app.maHoSo}/van-ban`}>

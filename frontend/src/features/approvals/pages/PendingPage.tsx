@@ -150,7 +150,7 @@ export function PendingPage() {
       />
 
       <Card>
-        <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-5">
+        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <div className="relative xl:col-span-2">
             <Search
               className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"

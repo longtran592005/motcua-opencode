@@ -111,7 +111,7 @@ export function StudentHomePage() {
           </Card>
 
           <Card className="bg-secondary/40">
-            <CardContent className="space-y-2 p-4">
+            <CardContent className="space-y-2">
               <p className="flex items-center gap-2 font-bold text-brand-heading">
                 <Files className="size-4 text-primary" aria-hidden="true" />
                 Tổng hồ sơ đã tạo

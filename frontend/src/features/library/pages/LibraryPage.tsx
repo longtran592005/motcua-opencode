@@ -76,7 +76,7 @@ export function LibraryPage() {
       />
 
       <Card>
-        <CardContent className="grid gap-3 p-4 sm:grid-cols-3">
+        <CardContent className="grid gap-4 sm:grid-cols-3">
           <div className="relative sm:col-span-2">
             <Search
               className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -107,7 +107,7 @@ export function LibraryPage() {
       </Card>
 
       {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <Skeleton key={i} className="h-40 w-full" />
           ))}
@@ -126,10 +126,10 @@ export function LibraryPage() {
             Tìm thấy <span className="font-semibold text-foreground">{data.length}</span> tài liệu
             {nhom !== 'ALL' ? ` trong nhóm “${nhom}”` : ''}.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.map((item) => (
               <Card key={item.id} className="flex h-full flex-col">
-                <CardContent className="flex h-full flex-col gap-3 p-4">
+                <CardContent className="flex h-full flex-col gap-3">
                   <div className="flex items-start gap-3">
                     <span
                       className={cn(

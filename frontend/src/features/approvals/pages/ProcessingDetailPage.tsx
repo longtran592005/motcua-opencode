@@ -125,7 +125,7 @@ export function ProcessingDetailPage() {
             <CardHeader>
               <CardTitle className="text-base">Thông tin sinh viên</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2">
+            <CardContent className="grid gap-4 sm:grid-cols-2">
               {[
                 ['Họ và tên', app.sinhVien.hoTen],
                 ['Mã số sinh viên', app.sinhVien.maSo],

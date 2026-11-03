@@ -134,7 +134,7 @@ export function WorkflowAdminPage() {
       />
 
       {isLoading ? (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-40 w-full" />
           ))}
@@ -148,12 +148,12 @@ export function WorkflowAdminPage() {
           moTa="Bấm “Thêm luồng duyệt” để tạo luồng đầu tiên."
         />
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {data.map((wf) => {
             const steps = [...wf.steps].sort((a, b) => a.order - b.order)
             return (
               <Card key={wf.id} className="h-full">
-                <CardContent className="flex h-full flex-col gap-3 p-4">
+                <CardContent className="flex h-full flex-col gap-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="flex items-center gap-2 font-bold text-brand-heading">

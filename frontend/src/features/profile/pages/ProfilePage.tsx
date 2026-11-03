@@ -132,7 +132,7 @@ export function ProfilePage() {
         <CardHeader>
           <CardTitle className="text-base">Thông tin học tập</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
+        <CardContent className="grid gap-4 sm:grid-cols-2">
           {[
             ['Mã số sinh viên', user.maSo],
             ['Lớp', user.lopTen ?? '—'],

@@ -33,7 +33,7 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <Card className={cn('h-full', className)}>
-      <CardContent className="flex items-start gap-3 p-4">
+      <CardContent className="flex items-start gap-3">
         <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-lg', TONES[tone])}>
           <Icon className="size-5" aria-hidden="true" />
         </span>

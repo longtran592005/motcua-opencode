@@ -99,10 +99,10 @@ export function PublicHomePage() {
             </form>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             {DIEM_NOI_BAT.map((item) => (
               <Card key={item.tieuDe} className="border-white/15 bg-white/5 text-white backdrop-blur">
-                <CardContent className="space-y-2 p-4">
+                <CardContent className="space-y-2">
                   <span className="flex size-10 items-center justify-center rounded-lg bg-white/15">
                     <item.icon className="size-5" aria-hidden="true" />
                   </span>

@@ -209,7 +209,7 @@ export function UsersPage() {
       />
 
       <Card>
-        <CardContent className="grid gap-3 p-4 sm:grid-cols-4">
+        <CardContent className="grid gap-4 sm:grid-cols-4">
           <div className="relative sm:col-span-2">
             <Search
               className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
