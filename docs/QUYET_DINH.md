@@ -114,6 +114,8 @@ khác khoa/lớp/vai trò đều bị `403 FORBIDDEN_SCOPE`.
 | `OTP_INVALID` | 400 |
 | `OTP_EXPIRED` | 410 |
 | `DOCUMENT_REVOKED` | 410 |
+| `PDF_NOT_READY` | 409 |
+| `INVALID_FILE_TOKEN` | 404 |
 | `OTP_LOCKED` | 423 |
 | `RATE_LIMITED` | 429 (kèm tiêu đề `Retry-After`) |
 | `UNKNOWN` | 500 |
@@ -292,5 +294,4 @@ trong commit đó; ghi vào mục "Lỗi thật phát hiện" của báo cáo v�
 - CSDL dev chỉ được **SELECT** để kiểm tra (không sửa). Nếu dev lệch thì chỉ ghi báo cáo.
 
 ---
-
 
