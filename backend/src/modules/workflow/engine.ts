@@ -164,7 +164,7 @@ export function stepDefOf(app: ApplicationRow, si: ApplicationRow['stepInstances
 /** `SELECT … FOR UPDATE` trên hàng hồ sơ — tuần tự hoá mọi chuyển trạng thái. */
 export async function lockApplication(tx: Prisma.TransactionClient, id: string): Promise<void> {
   const rows = await tx.$queryRaw<Array<{ id: string }>>`
-    SELECT id FROM applications WHERE id = ${id}::uuid
+    SELECT id FROM applications WHERE id = ${id}::uuid FOR UPDATE
   `
   if (rows.length === 0) throw AppError.notFound('Không tìm thấy hồ sơ.')
 }
