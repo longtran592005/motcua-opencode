@@ -55,11 +55,15 @@ const CHECKS: Array<{ ma: string; moTa: string; sql: string }> = [
   },
   {
     ma: 'STEP_PENDING_THIEU_ASSIGNEE',
-    moTa: 'Mọi bước đang PENDING phải có người được gán',
+    moTa: 'Bước đang mở phải có người được gán',
     sql: `SELECT a.ma_ho_so AS "maHoSo", s.step_order AS "buoc", s.role
           FROM step_instances s
           JOIN applications a ON a.id = s.application_id
-          WHERE a.deleted_at IS NULL AND s.trang_thai = 'PENDING' AND s.assignee_id IS NULL`,
+          WHERE a.deleted_at IS NULL
+            AND a.trang_thai IN ('SUBMITTED', 'PENDING_APPROVAL')
+            AND s.step_order = a.current_step_order
+            AND s.trang_thai IN ('PENDING', 'IN_PROGRESS')
+            AND s.assignee_id IS NULL`,
   },
   {
     ma: 'HAI_BUOC_DANG_MO',
