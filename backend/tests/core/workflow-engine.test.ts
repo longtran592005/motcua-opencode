@@ -338,6 +338,61 @@ describe('Lõi workflow engine (Bước 1)', () => {
       expect(res.status).toBe(409)
       expect(res.body.error.code).toBe('ALREADY_PROCESSED')
     })
+
+    it('trạng thái đổi trong lúc chờ khoá → không được dùng trạng thái cũ (cần SELECT … FOR UPDATE)', async () => {
+      const { requestType } = await createFlow([
+        { role: 'CO_VAN', mode: 'ONE_CLICK' },
+        { role: 'TRUONG_KHOA', mode: 'ONE_CLICK' },
+      ])
+      const draft = await createDraft(sv, requestType.id)
+      await submit(sv, draft.maHoSo)
+      const app = await prisma.application.findUniqueOrThrow({ where: { maHoSo: draft.maHoSo } })
+      const { session: cv } = await approverFor(studentUserId, 'CO_VAN')
+
+      // Giao dịch KHÁC giữ khoá hàng hồ sơ; trong lúc giữ khoá, nó đổi trạng
+      // thái hồ sơ rồi mới commit (mô phỏng người khác rút đơn cùng lúc).
+      let baoDaKhoa!: () => void
+      const daKhoa = new Promise<void>((resolve) => {
+        baoDaKhoa = resolve
+      })
+      let choYeuCauDaDoc!: () => void
+      const yeuCauDaDoc = new Promise<void>((resolve) => {
+        choYeuCauDaDoc = resolve
+      })
+
+      const txKhac = prisma.$transaction(
+        async (tx) => {
+          await tx.$queryRaw`SELECT id FROM applications WHERE id = ${app.id}::uuid FOR UPDATE`
+          baoDaKhoa()
+          await yeuCauDaDoc
+          await tx.application.update({ where: { id: app.id }, data: { trangThai: 'CANCELLED' } })
+        },
+        { timeout: 20_000 },
+      )
+      await daKhoa
+
+      // Yêu cầu duyệt gửi đi trong lúc hàng đang bị giao dịch kia giữ khoá.
+      const duyet = api()
+        .post(`/api/v1/approvals/${draft.maHoSo}/approve`)
+        .set(bearer(cv.token))
+        .set('Idempotency-Key', idemKey())
+        .send({ ghiChu: 'duyệt trong lúc hồ sơ bị khoá' })
+
+      // Chờ đủ lâu để chắc chắn yêu cầu đã đọc trạng thái (cũ) và đang vướng khoá.
+      await new Promise((r) => setTimeout(r, 800))
+      choYeuCauDaDoc()
+
+      const res = await duyet
+      await txKhac
+
+      // Nếu transition() KHÔNG đọc lại trạng thái dưới khoá, yêu cầu sẽ dùng
+      // trạng thái cũ (Đã nộp) và duyệt thành công — sai. Đúng ra: 409.
+      expect(res.status).toBe(409)
+      expect(res.body.error.code).toBe('INVALID_TRANSITION')
+      const sau = await prisma.application.findUniqueOrThrow({ where: { id: app.id } })
+      expect(sau.trangThai).toBe('CANCELLED')
+      expect(await prisma.approval.count({ where: { applicationId: app.id, hanhDong: 'APPROVE' } })).toBe(0)
+    })
   })
 
   /* ------------------------------------------------------------------ *
