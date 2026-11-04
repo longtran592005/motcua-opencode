@@ -21,6 +21,7 @@
     "verify-pdf": "tsx scripts/verify-pdf.ts",
     "check-integrity": "tsx scripts/check-integrity.ts",
     "chatbot:ingest": "tsx scripts/ingest-knowledge.ts",
+    "chatbot:eval": "tsx scripts/chatbot-eval.ts",
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
