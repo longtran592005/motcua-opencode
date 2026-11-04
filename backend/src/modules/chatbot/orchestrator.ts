@@ -378,12 +378,12 @@ export async function orchestrate(deps: OrchestratorDeps): Promise<ChatOutcome> 
           continue
         }
         // Hậu xử lý: loại URL lạ, lọc nguồn không thuộc tập truy xuất.
-        let text = stripForeignUrls(parsed.answer)
+        const text = stripForeignUrls(parsed.answer)
         if (!parsed.can_answer || (!enoughEvidence && toolResults.length === 0 && !draftProposal)) {
+          // Chống bịa (Q3): thiếu căn cứ truy xuất hoặc mô hình tự nhận không đủ
+          // → câu trả lời chuẩn "chưa tìm thấy", KHÔNG dùng chữ mô hình.
           mode = 'LLM'
-          answer = parsed.can_answer
-            ? text
-            : `${text || 'Tôi chưa tìm thấy thông tin này trong tài liệu của trường.'}`
+          answer = 'Tôi chưa tìm thấy thông tin này trong tài liệu của trường.'
           break
         }
         answer = text

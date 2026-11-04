@@ -142,9 +142,13 @@ export class FakeProvider implements LLMProvider {
   async generate(input: GenerateInput): Promise<string> {
     this.prompts.push({ system: input.system, prompt: input.prompt })
     this.lastPrompt = { system: input.system, prompt: input.prompt }
-    const noData = /NGUỒN:[\s\S]*?(chưa có đoạn nào|<NGUỒN-rỗng>)|\(không có kết quả công cụ\)/.test(input.prompt)
+    const noData = /chưa có đoạn nào|<NGUỒN-rỗng>/.test(input.prompt)
     if (noData) {
-      return JSON.stringify({ answer: 'TRỢ LÝ CHƯA TÌM THẤY TRONG TÀI LIỆU.', can_answer: false, cited_source_ids: [] })
+      return JSON.stringify({
+        answer: 'Tôi chưa tìm thấy thông tin này trong tài liệu của trường.',
+        can_answer: false,
+        cited_source_ids: [],
+      })
     }
     return JSON.stringify({
       answer: '(Giả lập) Câu trả lời dựa trên nguồn truy xuất ở phía dưới.',
@@ -155,13 +159,17 @@ export class FakeProvider implements LLMProvider {
 
   async embed(texts: string[]): Promise<number[][]> {
     return texts.map((t) => {
-      // Băm đơn giản 32 chiều, deterministic.
+      // Phép chiếu ngẫu nhiên 32 chiều (deterministic) có trung bình ~0:
+      // chữ trùng nhau → giống hệt nhau; chữ không liên quan → cosine ~0.
+      // (nếu chỉ đếm vào 1 bucket thì chữ RẤT khác nhau vẫn cho cosine cao
+      // do sai lệch dương — sẽ phá ngưỡng CHAT_MIN_SCORE trong kiểm thử).
       const v = new Array<number>(32).fill(0)
-      const tokens = t.toLowerCase().split(/\s+/)
-      for (const tok of tokens) {
+      for (const tok of t.toLowerCase().split(/\s+/)) {
+        if (!tok) continue
         let h = 0
         for (let i = 0; i < tok.length; i += 1) h = (h * 31 + tok.charCodeAt(i)) >>> 0
         v[h % 32] += 1
+        v[(h >>> 8) % 32] -= 1
       }
       const norm = Math.hypot(...v) || 1
       return v.map((x) => x / norm)

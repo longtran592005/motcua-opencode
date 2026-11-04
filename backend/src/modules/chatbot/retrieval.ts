@@ -168,6 +168,20 @@ function bm25Score(chunk: IndexedChunk, queryTerms: string[], dfs: Map<string, n
   return s
 }
 
+/** Chẩn đoán: điểm BM25 tuyệt đối của top-5 chunk cho một truy vấn. */
+export function bm25Debug(query: string): Array<{ docTitle: string; raw: number }> {
+  const state = index
+  if (!state) return []
+  const qTerms = keywords(query)
+  if (!qTerms.length) return []
+  const out: Array<{ docTitle: string; raw: number }> = []
+  for (const c of state.chunks) {
+    const raw = bm25Score(c, qTerms, state.df, state.chunks.length, state.avgLen)
+    if (raw > 0) out.push({ docTitle: c.docTitle, raw: Number(raw.toFixed(3)) })
+  }
+  return out.sort((a, b) => b.raw - a.raw).slice(0, 5)
+}
+
 function cosine(a: number[] | null, b: number[] | null): number | null {
   if (!a || !b || a.length === 0 || a.length !== b.length) return null
   let dot = 0
@@ -256,12 +270,13 @@ export async function searchKnowledge(
     rrf.set(id, cur)
   })
 
-  const ranked = [...rrf.entries()].sort((a, b) => b[1].rrf - a[1].rrf).slice(0, topK)
+  // Ứng viên = hợp của top BM25 và top vector (mỗi phía cắt topK) — bảo đảm
+  // chunk khớp từ khóa mạnh nhất và chunk vector-gần nhất đều vào vòng chấm điểm.
+  const candIds = [...new Set([...kwRank.slice(0, topK), ...vecRank.slice(0, topK)].map(([id]) => id))]
+  const candidates = [...rrf.entries()].filter(([id]) => candIds.includes(id))
   const byId = new Map(state.chunks.map((c) => [c.chunkId, c]))
   const out: SearchResult[] = []
-  let rank = 0
-  for (const [id, m] of ranked) {
-    rank += 1
+  for (const [id, m] of candidates) {
     const c = byId.get(id)
     if (!c) continue
     const kwNorm = m.kw
@@ -285,8 +300,14 @@ export async function searchKnowledge(
       score: Number(score.toFixed(4)),
       kwScore: Number(kwNorm.toFixed(4)),
       vecScore: vec === null ? null : Number(vec.toFixed(4)),
-      rank,
+      rank: 0,
     })
   }
-  return out
+  // Cắt topK theo ĐIỂM (RRF chỉ để chọn ứng viên; điểm quyết định thứ hạng).
+  out.sort((a, b) => b.score - a.score)
+  const final = out.slice(0, topK)
+  final.forEach((r, i) => {
+    r.rank = i + 1
+  })
+  return final
 }
