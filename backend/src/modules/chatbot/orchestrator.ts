@@ -206,6 +206,7 @@ export async function runTool(ten: string, thamSo: unknown, user: Express.AuthUs
             maLoiDon: d.maLoiDon,
             tenLoaiDon: d.tenLoaiDon,
             cacTruong: d.cacTruong.map((f) => ({ ten: f.ten, nhan: f.nhan, giaTriGoiY: f.giaTriGoiY, batBuoc: f.batBuoc })),
+            ...(d.canhBao.length ? { canhBao: d.canhBao } : {}),
           }),
         ],
       }

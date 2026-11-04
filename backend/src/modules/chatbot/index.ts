@@ -215,12 +215,20 @@ async function handleConfirmDraft(req: import('express').Request, res: import('e
   }
   // Tạo bản nháp bằng hàm có sẵn của module applications (không viết lại logic nghiệp vụ).
   const { createDraft } = await import('../applications/service')
+  // Action đề xuất mang MÃ loại đơn (VD "GD-BANG-DIEM"); createDraft cần id UUID.
+  const rt = await prisma.requestType.findFirst({
+    where: { ma: action.maLoiDon, deletedAt: null },
+    select: { id: true, hoatDong: true },
+  })
+  if (!rt || !rt.hoatDong) {
+    throw AppError.validation('Loại đơn trong đề xuất không còn nhận hồ sơ.')
+  }
   const ctx = { ...requestContext(req), user: req.user! }
   const duLieu: Record<string, string> = {}
   for (const f of action.cacTruong ?? []) {
     if (f.giaTriGoiY) duLieu[f.ten] = String(f.giaTriGoiY)
   }
-  const draft = await createDraft(ctx, { requestTypeId: action.maLoiDon, duLieu, tepDinhKem: [] })
+  const draft = await createDraft(ctx, { requestTypeId: rt.id, duLieu, tepDinhKem: [] })
   await markActionUsed(userId, actionId)
   await recordAudit({
     nguoiThucHien: { id: userId, hoTen: req.user!.hoTen, role: req.user!.role },
