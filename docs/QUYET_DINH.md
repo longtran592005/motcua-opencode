@@ -295,3 +295,92 @@ trong commit đó; ghi vào mục "Lỗi thật phát hiện" của báo cáo v�
 
 ---
 
+## Nhóm F — Quyết định Trợ lý ảo chatbot (Giai đoạn chatbot, đã chốt)
+
+### F1 (Q1). Vị trí mã + kiến trúc chung
+
+- Toàn bộ mã chatbot nằm ở `backend/src/modules/chatbot/` và `frontend/src/features/chatbot/`;
+  cấu hình `CHAT_*` trong `backend/src/config/env.ts`; migration **chỉ bổ sung** bảng:
+  `knowledge_documents`, `knowledge_chunks`, `chat_feedback`, `chat_handoffs` + cột nullable
+  của `chat_messages` (`hanh_dong`, `che_do`, `mo_hinh`, `thoi_gian_ms`, `nguoi_dung_id`) và `chat_sessions`.
+- Không sửa migration cũ, không đổi bảng nghiệp vụ sẵn có.
+- Migration chỉ áp dụng cho **CSDL TEST** (`localhost:5434/motcua_test`) trong giai đoạn phát triển;
+  lệnh áp cho dev nằm trong `docs/CHATBOT_HUONG_DAN.md`.
+
+### F2 (Q2). Nhà cung cấp mô hình
+
+- Interface `LLMProvider { generate(), embed() }`; cài đặt `GeminiProvider` (REST Generative
+  Language API, khoá **chỉ** đọc từ `GEMINI_API_KEY` trong `backend/.env`) và `FakeProvider`
+  (không mạng, dùng cho kiểm thử). Thiếu khoá / lỗi / 429 →caller suy giảm **SEARCH_ONLY**,
+  không để lỗi trần trụi ra giao diện. Không có `VITE_GEMINI_API_KEY` — khoá không bao giờ ra frontend.
+
+### F3 (Q3). Truy xuất — không pgvector
+
+- Quyết định: **KHÔNG dùng pgvector**. Embedding lưu `jsonb` (`knowledge_chunks.embedding`);
+  tìm kiếm lai BM25 tự cài (score chuẩn hoá trong [0,1]) + cosine vector, hợp ứng viên bằng
+  RRF (chọn top từng phía), xếp hạng cuối theo **điểm tổng hợp** (BM25×0.85 khi chỉ từ-khóa;
+  0.6×kw + 0.4×vec khi có cả hai).
+- Chỉ mục truy xuất nạp **trong bộ nhớ** từ CSDL (`reloadKnowledgeIndex()`), nạp lại khi
+  thêm/xóa/bật-tắt tài liệu; tự nạp khi lần gọi đầu.
+- Chống bịa: câu trả lời chỉ dựa trên `<<NGUỒN>>` + `<<KẾT QUẢ CÔNG CỤ>>`; khi `can_answer=false`
+  HOẶC điểm truy xuất đầu < `CHAT_MIN_SCORE` (mặc định 0.6) mà không có kết quả công cụ →
+  câu trả lời chuẩn `"Tôi chưa tìm thấy thông tin này trong tài liệu của trường."` + nút
+  `OFFER_HANDOFF`, **bất chấp** chữ của mô hình.
+
+### F4 (Q4). Phân quyền & hoạt động theo vai trò
+
+- Chat: mọi vai trò đăng nhập; công cụ tra cứu đơn **chỉ SINH_VIEN** (cố vấn/khác → thông báo từ chối).
+- Cán bộ: `PHONG_DAO_TAO`, `ADMIN` — trang tri thức, hộp thư handoff, thống kê; `CO_VAN`/`TRUONG_KHOA` 403.
+- Handoff tạo thông báo cho **toàn bộ** `PHONG_DAO_TAO` và trả lời sinh viên bằng thông báo trong ứng dụng.
+
+### F5 (Q5). Công cụ — chỉ đọc hoặc đề xuất, danh tính từ token
+
+- 4 công cụ: `get_my_applications`, `get_application_status`, `suggest_request_types`,
+  `propose_draft`. Tất cả CHỈ ĐỌC hoặc trả **đề xuất**; không hề ghi dữ liệu.
+- Danh tính LUÔN lấy từ token (`ctx.user`); tham số `userId` do mô hình đưa ra bị zod loại bỏ
+  (test "userId lạ bị loại"); đơn của người khác trả "không tìm thấy" (chống IDOR).
+
+### F6 (Q6). Riêng tư
+
+- `maskPii(text, profile)` che họ tên/mã số/email/SĐT/ngày sinh + CCCD 12 số/regex trước khi
+  **mọi** chuỗi vào prompt mô hình (câu hỏi, lịch sử, nguồn, kết quả công cụ).
+- Kết quả công cụ gửi mô hình chỉ gồm mã hồ sơ, tên loại đơn, trạng thái, bước, ngày — không tên/MSSV.
+
+### F7 (Q7). Ghi dữ liệu — hành động server dựng + xác nhận rõ
+
+- Mô hình KHÔNG tạo đơn trực tiếp; chỉ đề xuất `DRAFT_PROPOSAL` (từ `propose_draft`).
+- Hành động server dựng trong `chat_messages.hanh_dong` kèm `{ id, expiresAt (24h), daDung }`;
+  xác nhận qua `POST /chat/actions/:actionId/confirm` → tạo bản nháp `MC-YYYY-NNNNNN`
+  (dùng lại `createDraft` của module applications), ghi audit `CHATBOT_DRAFT_CONFIRM`.
+- Idempotent: xác nhận lần hai → `409 DUPLICATE_ACTION`; hết hạn → 422; người khác → 404.
+- Hạn mức: `CHAT_HANDOFF_PER_DAY` (5/ngày) — câu thứ 6 → 429.
+
+### F8 (Q8). Hậu xử lý chữ mô hình — URL/hành động do server dựng
+
+- Câu trả lời được cắt URL lạ (`stripForeignUrls`); mọi liên kết/nút
+  (`OPEN_FORM`, `DOWNLOAD_FORM`, `OPEN_APPLICATION`, `DRAFT_PROPOSAL`, `OFFER_HANDOFF`)
+  do server dựng từ dữ liệu thật (thư viện biểu mẫu, đơn của chính người dùng).
+- Đề xuất loại đơn chỉ khớp tại 9/77 tài liệu có loại đơn tương ứng kiến nghị —
+  bảng đối chiếu nằm trong `backend/src/modules/chatbot/form-map.json`.
+
+### F9 (Q9). Bảng cấm — những gì chatbot KHÔNG làm
+
+- KHÔNG: thu/ghi thanh toán; tự nộp đơn (chỉ tạo bản nháp sau xác nhận + sinh viên nộp);
+  chấm bang/có quyền duyệt; quản lý tài khoản/khoá người dùng; chẩn đoán y tế/học tập;
+  cung cấp thông tin cá nhân của người khác.
+- Mọi câu hỏi ngoài phạm vi tra cứu thủ tục/tri thức trường → từ chối ngắn + gợi ý handoff.
+
+### F10. Hạn mức riêng của chat (ngoài hạn mức chung của API)
+
+- `CHAT_USER_PER_10MIN` (mặc định 15 lượt/10 phút, đếm trên tin nhắn USER thật trong CSDL),
+  `CHAT_USER_PER_DAY` (80), `CHAT_GLOBAL_PER_DAY` (1000), `CHAT_HANDOFF_PER_DAY` (5),
+  `CHAT_MIN_SCORE` (0.6), `CHAT_RETENTION_DAYS` (90). Vượt hạn mức → `429 RATE_LIMITED` + `Retry-After`.
+
+### F11. Bộ nhớ đệm câu trả lời
+
+- Chỉ cache khi: câu ≥ 6 ký tự khóa, KHÔNG có dãy 6 số liên tiếp (tránh PII-adjacent),
+  KHÔNG có kết quả công cụ cá nhân, mode LLM và KHÔNG phải "chưa tìm thấy".
+  Khoá = câu hỏi chuẩn hoá; TTL 24 giờ; lượt 2 ghi `moHinh='cache'` kèm nút handoff.
+
+---
+

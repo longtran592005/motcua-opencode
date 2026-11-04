@@ -1521,6 +1521,247 @@ paths:
       responses:
         '204': { description: "Đã ghi nhận" }
         '404': { $ref: '#/components/responses/NotFound' }
+  /chat/sessions/mine:
+    get:
+      tags: ["Trợ lý ảo"]
+      summary: "Danh sách phiên hội thoại của chính người dùng"
+      responses:
+        '200':
+          description: "Tối đa 20 phiên, mới nhất trước"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: string, format: uuid }
+                            tieuDe: { type: string, nullable: true }
+                            createdAt: { type: string, format: date-time }
+  /chat/sessions/{id}/messages:
+    get:
+      tags: ["Trợ lý ảo"]
+      summary: "Tin nhắn của một phiên hội thoại (chỉ của chính người dùng)"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: "Tối đa 50 tin nhắn, sớm nhất trước (vaiTro: USER | ASSISTANT, kèm nguồn/ngoại dạng khi có)"
+        '404': { $ref: '#/components/responses/NotFound' }
+  /chat/knowledge:
+    get:
+      tags: ["Trợ lý ảo"]
+      summary: "Danh mục tài liệu tri thức (Admin / Phòng Đào tạo)"
+      responses:
+        '200':
+          description: "Danh sách tài liệu (ma, tenTaiLieu, trangThai, kích thước…)"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            ma: { type: string }
+                            title: { type: string }
+                            status: { type: string, enum: [PROCESSING, READY, FAILED, DISABLED] }
+                            sourceType: { type: string, enum: [LIBRARY, UPLOAD, FAQ] }
+    post:
+      tags: ["Trợ lý ảo"]
+      summary: "Thêm tài liệu tri thức (dán văn bản hoặc tải tệp; kiểm tra magic bytes)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, kieu]
+              properties:
+                ma: { type: string, pattern: '^KB-' }
+                title: { type: string }
+                kieu: { type: string, enum: [TEXT, FILE] }
+                noiDung: { type: string, description: "TEXT: văn bản thô; FILE: nội dung tệp encode base64" }
+                mime: { type: string, description: "PDF/DOCX/TXT khi kieu=FILE" }
+      responses:
+        '201': { description: "Đã tạo tài liệu, đang xử lý (PROCESSING → READY)" }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /chat/knowledge/{ma}:
+    patch:
+      tags: ["Trợ lý ảo"]
+      summary: "Bật/tắt tài liệu (batHieuLuc: true → READY, false → DISABLED)"
+      parameters:
+        - name: ma
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [batHieuLuc]
+              properties: { batHieuLuc: { type: boolean } }
+      responses:
+        '200': { description: "Đã cập nhật" }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: ["Trợ lý ảo"]
+      summary: "Xóa tài liệu tri thức (chunk + embedding bị xóa theo)"
+      parameters:
+        - name: ma
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Đã xóa" }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /chat/knowledge/reindex:
+    post:
+      tags: ["Trợ lý ảo"]
+      summary: "Tải lại chỉ mục truy xuất từ CSDL (Admin / Phòng Đào tạo)"
+      responses:
+        '200':
+          description: "{ documentCount, chunkCount }"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          documentCount: { type: integer }
+                          chunkCount: { type: integer }
+  /chat/actions/{actionId}/confirm:
+    post:
+      tags: ["Trợ lý ảo"]
+      summary: "Xác nhận hành động server-dựng (hiện chỉ DRAFT_PROPOSAL → tạo bản nháp MC-)"
+      description: >-
+        Hành động do server dựng trong `chat_messages.hanh_dong`; xác nhận là thao tác
+        ghi duy nhất của chatbot. Hành động chỉ dùng MỘT lần (idempotent), hạn 24 giờ.
+        KHÔNG tự nộp đơn — bản nháp cần sinh viên nộp bằng luồng nộp thông thường.
+      parameters:
+        - name: actionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: "Đã tạo bản nháp"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          maHoSo: { type: string, pattern: '^MC-[0-9]{4}-[0-9]{6}$' }
+                          duongDan: { type: string }
+                          trangThai: { type: string, enum: [DRAFT] }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: "Hành động đã dùng rồi (DUPLICATE_ACTION)"
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /chat/handoffs:
+    post:
+      tags: ["Trợ lý ảo"]
+      summary: "Chuyển câu hỏi khó cho cán bộ Phòng Đào tạo (hạn 5 câu/ngày)"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sessionId: { type: string, format: uuid }
+                cauHoi: { type: string, maxLength: 2000 }
+      responses:
+        '201':
+          description: "Đã chuyển, kèm mã CH-YYYY-NNNNNN"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          ma: { type: string, pattern: '^CH-[0-9]{4}-[0-9]{6}$' }
+                          trangThai: { type: string, enum: [OPEN] }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /chat/handoffs/mine:
+    get:
+      tags: ["Trợ lý ảo"]
+      summary: "Danh sách câu hỏi đã chuyển của chính người dùng"
+      responses:
+        '200': { description: "Tối đa 50 câu, mới nhất trước" }
+  /chat/handoffs/inbox:
+    get:
+      tags: ["Trợ lý ảo"]
+      summary: "Hộp thư cán bộ: các câu hỏi chuyển lên (Admin / Phòng Đào tạo)"
+      parameters:
+        - name: trangThai
+          in: query
+          schema: { type: string, enum: [OPEN, ANSWERED, CLOSED, ALL], default: OPEN }
+      responses:
+        '200': { description: "Tối đa 100 câu" }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /chat/handoffs/{ma}/answer:
+    post:
+      tags: ["Trợ lý ảo"]
+      summary: "Cán bộ trả lời câu hỏi chuyển lên (trạng thái → ANSWERED, sinh viên nhận thông báo)"
+      parameters:
+        - name: ma
+          in: path
+          required: true
+          schema: { type: string, pattern: '^CH-' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cauTraLoi]
+              properties: { cauTraLoi: { type: string, maxLength: 5000 } }
+      responses:
+        '200': { description: "Đã trả lời" }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /chat/handoffs/{ma}/to-faq:
+    post:
+      tags: ["Trợ lý ảo"]
+      summary: "Đưa câu hỏi đã trả lời vào kho tri thức FAQ (tài liệu KB-* mới)"
+      parameters:
+        - name: ma
+          in: path
+          required: true
+          schema: { type: string, pattern: '^CH-' }
+      responses:
+        '201':
+          description: "{ ma: 'KB-…' }"
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
   /request-types:
     get:
       tags: ["Loại đơn"]
