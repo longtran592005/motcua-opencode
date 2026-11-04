@@ -1,0 +1,541 @@
+[
+  {
+    "tenBieuMau": "Đơn xin chuyển lớp",
+    "libraryId": "c180258e-78a4-5e59-bb6f-74f280062b16",
+    "maLoaiDon": "rt_dcn",
+    "tenLoaiDon": "Đơn xin chuyển ngành",
+    "doTinCay": "trung-binh"
+  },
+  {
+    "tenBieuMau": "Đơn xin việc",
+    "libraryId": "d7c5749b-935a-5f85-8e96-0dedde1326c9",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin chuyển chuyên ngành đào tạo",
+    "libraryId": "ab2c628a-e335-5936-81d0-aec7b5ad1a10",
+    "maLoaiDon": "rt_dcn",
+    "tenLoaiDon": "Đơn xin chuyển ngành",
+    "doTinCay": "trung-binh"
+  },
+  {
+    "tenBieuMau": "Đơn xin chuyển cơ sở đào tạo",
+    "libraryId": "417177d6-8e13-5a97-bd71-777b1adb7ec0",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin chuyển hình thức đào tạo",
+    "libraryId": "a65cbd49-0f22-5682-b085-8e6fc38b931e",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin chuyển ngành đào tạo",
+    "libraryId": "3ba241c5-8944-520b-822b-4952361f730e",
+    "maLoaiDon": "rt_dcn",
+    "tenLoaiDon": "Đơn xin chuyển ngành",
+    "doTinCay": "trung-binh"
+  },
+  {
+    "tenBieuMau": "Đơn xin chuyển trường",
+    "libraryId": "8677b29d-774e-5c0c-ba30-8cb381bb624f",
+    "maLoaiDon": "rt_dcn",
+    "tenLoaiDon": "Đơn xin chuyển ngành",
+    "doTinCay": "trung-binh"
+  },
+  {
+    "tenBieuMau": "Đơn xin chuyển trường (bản 2)",
+    "libraryId": "2d9dfb20-6dc6-5df0-8607-438685c59428",
+    "maLoaiDon": "rt_dcn",
+    "tenLoaiDon": "Đơn xin chuyển ngành",
+    "doTinCay": "trung-binh"
+  },
+  {
+    "tenBieuMau": "Đơn xin cấp bản sao bằng tốt nghiệp",
+    "libraryId": "b455619b-5f78-542f-89f8-217748ad9267",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin cấp bảng điểm",
+    "libraryId": "7b308ab0-f7e0-5ca7-a384-9986dde1947a",
+    "maLoaiDon": "rt_dbt",
+    "tenLoaiDon": "Đơn xin cấp bảng điểm",
+    "doTinCay": "cao"
+  },
+  {
+    "tenBieuMau": "Đơn xin cấp chứng nhận hoàn thành chương trình đào tạo",
+    "libraryId": "4e57e571-d96c-5a24-96d1-91ba2bf99e4d",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin cấp chứng nhận tốt nghiệp tạm thời",
+    "libraryId": "361851ef-7521-5a14-a432-ddcbbe502ac7",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin cấp lại bảng điểm",
+    "libraryId": "bf62fed0-11c4-55e1-94aa-d0948f381df7",
+    "maLoaiDon": "rt_dbt",
+    "tenLoaiDon": "Đơn xin cấp bảng điểm",
+    "doTinCay": "cao"
+  },
+  {
+    "tenBieuMau": "Đơn xin nghỉ học",
+    "libraryId": "f80a2789-77ca-5bb5-9b48-2bdf86768a91",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin nghỉ học tạm thời",
+    "libraryId": "e66fecac-4c71-56cf-8cc5-db3a67fc6a48",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin thôi học",
+    "libraryId": "369902a0-23f0-5e00-823a-bdcb631a6c52",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin đi học trở lại",
+    "libraryId": "8c4bb65f-c92e-5fcb-9e52-94ffd6efecf9",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin đi thực tập, thực tập trải nghiệm",
+    "libraryId": "1457788c-a1a0-5e86-89ef-3fbcede2fca3",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin đi thực tập, thực tập trải nghiệm (tự liên hệ cơ sở)",
+    "libraryId": "263536c5-a6c5-5cbb-a478-b3f110cf9a4f",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn đăng ký học cùng lúc hai chương trình",
+    "libraryId": "f8c032ae-6bd4-590f-8922-5c742e22ef2d",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn đăng ký học lại, học cải thiện học phần",
+    "libraryId": "f7702359-74be-5d42-8652-a30481e274c6",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn đề nghị miễn, giảm học phí",
+    "libraryId": "0b50591e-be60-5775-ba42-36ac5fb88cf0",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn đề nghị xác nhận thông tin văn bằng",
+    "libraryId": "128487ae-d05b-5660-a6d1-ed6163eb8f4c",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn đề nghị xét tốt nghiệp",
+    "libraryId": "36f0c312-a7fd-57e4-aa00-ca7db4b59659",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn đề nghị xét tốt nghiệp (quá hạn tốt nghiệp)",
+    "libraryId": "3478991a-d7d3-52ef-be90-9a38bca04d2c",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Biên bản họp xét ký tiếp hợp đồng lao động",
+    "libraryId": "1636b478-af13-5592-bd03-f11d332ecc45",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Báo cáo kết quả thử việc",
+    "libraryId": "cd0f4c4b-c105-5492-8d57-9a86cb0c4b17",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Bản cam kết thực hiện nghĩa vụ của người được cử đi đào tạo",
+    "libraryId": "01e611db-b2de-5a03-a258-7e9c2ed0d1d1",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Bản tự đánh giá kết quả công việc",
+    "libraryId": "dabe38a8-9e37-53ee-bb9e-d93a712d6aa1",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
+    "libraryId": "18f0ed29-714f-58bd-adec-dbe2c8f6509e",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Tờ trình bổ sung thêm nhân sự",
+    "libraryId": "90d6ac1a-0921-5e91-b634-d300e2f05d92",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Tờ trình đề nghị ký tiếp hợp đồng lao động",
+    "libraryId": "94b216a2-5569-55c0-b292-73baec78d3f0",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin chuyển công tác",
+    "libraryId": "a8066fb0-3df0-5c2c-859f-dfb06a6269f5",
+    "maLoaiDon": "rt_dcn",
+    "tenLoaiDon": "Đơn xin chuyển ngành",
+    "doTinCay": "trung-binh"
+  },
+  {
+    "tenBieuMau": "Đơn xin chuyển ngạch",
+    "libraryId": "50ae4b20-d4ac-5707-aa3a-9ca5be8c7692",
+    "maLoaiDon": "rt_dcn",
+    "tenLoaiDon": "Đơn xin chuyển ngành",
+    "doTinCay": "trung-binh"
+  },
+  {
+    "tenBieuMau": "Đơn xin chuyển đơn vị công tác (nội bộ)",
+    "libraryId": "a15b891b-3ecd-5f39-a2e5-52c40dc8f118",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin chấm dứt hợp đồng lao động",
+    "libraryId": "a57f36c4-07c9-5238-adc1-7c62873293bf",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin chấm dứt hợp đồng làm việc",
+    "libraryId": "d810b3dc-9be6-579b-96c6-03ebaba9860f",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin nghỉ dưỡng sức sau sinh",
+    "libraryId": "03214682-94f1-535d-b1c4-3ed680f16484",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin nghỉ không hưởng lương",
+    "libraryId": "7baa307f-6695-55d9-9d73-2935b1245d58",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin nghỉ phép",
+    "libraryId": "49bbaf46-9363-573b-a014-bc0e1faa864a",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin nghỉ phép (bản 2)",
+    "libraryId": "1a6973af-1639-5d62-a11e-05e541876bf6",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin nghỉ ốm, thai sản",
+    "libraryId": "9f1447b2-1cfe-5eb5-b32e-e059760eaaf4",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin trở lại công tác",
+    "libraryId": "5657c910-fa7b-5ea6-85f3-e7ca1e2b25ba",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin trở lại công tác (bản 2)",
+    "libraryId": "71b55c7d-7736-5961-b939-f3fcf4a89242",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin trở lại công tác sau khi đi học tại nước ngoài",
+    "libraryId": "aafe29fc-d956-567f-8e99-32e0fae32d57",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin tăng lương cho người lao động",
+    "libraryId": "6231cb73-a2f9-5152-afc1-08519986426c",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin tạm hoãn thực hiện hợp đồng",
+    "libraryId": "bb74e263-0d39-5673-999c-9b8297d3fb72",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin xác nhận công tác tại Trường Đại học Thái Bình",
+    "libraryId": "f18d9017-1168-5c44-bfe1-92acfacb9fac",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin xét nâng bậc lương trước thời hạn",
+    "libraryId": "c29c3c55-1a37-5ac7-9793-a302697322b9",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin đi công tác, hội nghị, tập huấn",
+    "libraryId": "9a216079-c68c-5567-83da-cc286655f26b",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin đi du lịch, thăm thân nước ngoài",
+    "libraryId": "817727f1-fadc-5732-b423-69886266cbee",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xin đi học trong nước",
+    "libraryId": "ddb9db20-0820-5c45-9b87-bea41f5cf3b9",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn xét hưởng phụ cấp thâm niên nhà giáo",
+    "libraryId": "c64a2eae-8409-5167-98fd-a03f19c4918e",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn đề nghị hưởng phụ cấp đứng lớp cho giảng viên",
+    "libraryId": "5c1c0986-6612-590f-a3f6-d8877d89ad91",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Đơn đề nghị ký tiếp hợp đồng lao động",
+    "libraryId": "67920e19-6132-55f4-b0ac-8694a3d7408e",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình bổ nhiệm cán bộ quản lý thuộc diện Ban Thường vụ Tỉnh uỷ quản lý",
+    "libraryId": "473196d9-f719-586f-9a4c-3e92b52eff51",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình bổ nhiệm cán bộ quản lý thuộc thẩm quyền Hiệu trưởng",
+    "libraryId": "9f0c63eb-807e-5502-8407-030a53b46723",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình giải quyết cho thôi việc theo nguyện vọng cá nhân",
+    "libraryId": "d845996f-00c2-5970-b6a2-77cdee0f34c8",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình giải quyết chế độ tử tuất cho viên chức, người lao động",
+    "libraryId": "af39444d-50f6-5a3f-881b-4445a0be76a9",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình nghỉ phép",
+    "libraryId": "69539ab6-25d0-5306-b12a-ac2e33f09541",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình nghỉ việc không hưởng lương",
+    "libraryId": "01db1edf-134b-571f-95be-c21c41b43d22",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+    "libraryId": "21b4a379-b8eb-599e-a4db-92676324808c",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình nâng bậc lương trước thời hạn",
+    "libraryId": "102d767f-2146-5feb-b79b-543213575b0a",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình tuyển dụng lao động hợp đồng",
+    "libraryId": "3a257a4f-f355-52e6-ad74-a6964220a8fa",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình tuyển dụng, tiếp nhận viên chức",
+    "libraryId": "0b905259-b765-518d-a299-3efc6dba89e6",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình xét chuyển chức danh nghề nghiệp",
+    "libraryId": "269590ed-1b96-5183-b5ae-29461d62300a",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình xét, công nhận và đề nghị các danh hiệu thi đua - khen thưởng",
+    "libraryId": "593fc55d-8032-5949-9f00-4b8bc6dd2d17",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình xử lý kỷ luật đối với viên chức, người lao động",
+    "libraryId": "06ada00c-cbbf-5568-aea2-9de3818d6989",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình điều chỉnh phụ cấp ưu đãi đối với nhà giáo",
+    "libraryId": "136b976f-d5d5-58ce-9ad9-70163eb4cb67",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Quy trình đào tạo, bồi dưỡng, tập huấn, hội nghị, hội thảo",
+    "libraryId": "1eadbab0-aa1d-573a-892e-a8f0d6fcf200",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Khoa học Công nghệ và HTPT",
+    "libraryId": "f53d2104-38e9-5a4e-bba1-cbf4adc86eef",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Kế hoạch Tài chính",
+    "libraryId": "3ac00617-845b-54a9-b531-0c8b01715b06",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
+    "libraryId": "a389a2c6-539c-59b6-a1ad-7e3a5a58d8e7",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Thủ tục hành chính và hồ sơ yêu cầu - Văn phòng",
+    "libraryId": "5918760b-461e-5db8-8d2f-de77ac914af4",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Danh mục thủ tục giải quyết tại Bộ phận Một cửa",
+    "libraryId": "1ea8ebcc-e864-5fd5-aacf-c4ebd0a81762",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Danh mục thủ tục giải quyết tại Bộ phận Một cửa (bản 2)",
+    "libraryId": "99a61f9d-da20-528c-9562-0aff09859e2e",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  },
+  {
+    "tenBieuMau": "Giới thiệu hệ thống hỗ trợ Bộ phận Một cửa",
+    "libraryId": "96dbb1fe-af0f-591f-8757-32554d2cd565",
+    "maLoaiDon": null,
+    "tenLoaiDon": null,
+    "doTinCay": "thap"
+  }
+]

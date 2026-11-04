@@ -20,6 +20,7 @@
     "smoke": "tsx scripts/smoke.ts",
     "verify-pdf": "tsx scripts/verify-pdf.ts",
     "check-integrity": "tsx scripts/check-integrity.ts",
+    "chatbot:ingest": "tsx scripts/ingest-knowledge.ts",
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",

@@ -13,6 +13,7 @@ import { workflowRouter } from './modules/workflows'
 import { userRouter } from './modules/users'
 import { publicRouter } from './modules/public/verify'
 import { delegationRouter } from './modules/delegations'
+import { chatbotRouter } from './modules/chatbot'
 
 /** Gốc API phiên bản 1 — mọi đường dẫn khớp docs/openapi.yaml. */
 export const apiRouter: Router = Router()
@@ -32,3 +33,4 @@ apiRouter.use('/request-types', requestTypeRouter)
 apiRouter.use('/workflows', workflowRouter)
 apiRouter.use('/users', userRouter)
 apiRouter.use('/public', publicRouter)
+apiRouter.use('/chat', chatbotRouter)
