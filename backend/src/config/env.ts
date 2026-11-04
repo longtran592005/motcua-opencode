@@ -91,6 +91,28 @@ const schema = z.object({
   ENABLE_SLA_JOB: boolFromEnv(true),
   /** Chu kỳ quét job SLA (giây). */
   SLA_JOB_INTERVAL_SECONDS: z.coerce.number().int().positive().default(300),
+
+  /* ------------------------------------------------------------------ *
+   * Chatbot AI (Giai đoạn chatbot)
+   * ------------------------------------------------------------------ */
+
+  /** Khoá Gemini API — CHỈ đặt trong backend/.env, không đưa vào frontend/Git. */
+  GEMINI_API_KEY: z.string().optional(),
+  /** Tên mô hình sinh văn bản (miễn phí: gemini-2.5-flash). */
+  GEMINI_MODEL: z.string().min(3).default('gemini-2.5-flash'),
+  /** Tên mô hình embedding (miễn phí: gemini-embedding-001). */
+  GEMINI_EMBED_MODEL: z.string().min(3).default('gemini-embedding-001'),
+  /** Số điểm truy xuất tối thiểu để coi là "có căn cứ" trả lời. */
+  CHAT_MIN_SCORE: z.coerce.number().nonnegative().default(0.6),
+  /** Giới hạn theo người dùng: số tin nhắn / 10 phút và / ngày. */
+  CHAT_USER_PER_10MIN: z.coerce.number().int().positive().default(15),
+  CHAT_USER_PER_DAY: z.coerce.number().int().positive().default(80),
+  /** Giới hạn toàn hệ thống: lượt gọi Gemini / ngày. */
+  CHAT_GLOBAL_PER_DAY: z.coerce.number().int().positive().default(1000),
+  /** Số câu chuyển lên cán bộ tối đa mỗi người mỗi ngày. */
+  CHAT_HANDOFF_PER_DAY: z.coerce.number().int().positive().default(5),
+  /** Số ngày giữ lịch sử tin nhắn trước khi dọn. */
+  CHAT_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
 })
 
 const parsed = schema.safeParse(process.env)
