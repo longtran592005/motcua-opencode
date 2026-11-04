@@ -9,6 +9,7 @@ import path from 'node:path'
 
 const cssPath = path.resolve(import.meta.dirname, '..', 'src', 'index.css')
 const css = fs.readFileSync(cssPath, 'utf8')
+const LABEL = process.argv[2] ?? 'HIỆN TẠI'
 
 function parseBlock(name) {
   const start = css.indexOf(`${name} {`)
@@ -161,6 +162,6 @@ function print(title, res) {
   return res.rows.some((r) => !r.pass)
 }
 
-const beforeFail = [print('TRƯỚC', before.light), print('TRƯỚC', before.dark)].some(Boolean)
+const beforeFail = [print(`${LABEL}`, before.light), print(`${LABEL}`, before.dark)].some(Boolean)
 if (!beforeFail) process.exit(0)
 process.exit(1)
