@@ -14,7 +14,7 @@ Phạm vi so sánh: nhánh `chatbot-ai` so với tag `backup-truoc-chatbot` (b�
 | Kho tri thức | **77/77 tài liệu thư viện nạp READY**, 333 đoạn trích (chunk); **2 tệp `.xls` không đọc được** (bỏ qua an toàn) |
 | Khớp biểu mẫu ↔ loại đơn | **9/77** (`backend/src/modules/chatbot/form-map.json`) |
 | Kiểm thử tự động chatbot | 3 file, **26/26 PASS** trong ~5 giây (mục tiêu ≤ 1 phút, FakeProvider — không gọi mạng) |
-| Bộ test toàn dự án (lần 1) | **28 file PASS / 1 skipped (29 file)**, 232 test PASS + 19 todo, 142,6 s |
+| Bộ test toàn dự án | **Lần 1: 28 file PASS / 1 skipped (29 file)**, 232 test PASS + 19 todo, 142,6 s; lần 2 bị crash worker hạ tầng (không kết luận — xem §5.3) |
 | Đánh giá truy xuất | **27/30 = 90% ĐẠT** (top-3 ≥ 80%, chế độ từ-khóa, CSDL TEST — `npm run chatbot:eval`) |
 | Lỗi thật đã sửa trong giai đoạn | `handleConfirmDraft` truyền mã nghiệp vụ `maLoiDon` thay UUID; thiếu `canhBao` trong action `DRAFT_PROPOSAL`; FakeProvider embed làm dương giả (cosine ≈ 1) phá ngưỡng `CHAT_MIN_SCORE` |
 | Khoá API | Không có khoá nào dính frontend/git/log; chỉ đọc từ `GEMINI_API_KEY` trong `backend/.env` — hiện **chưa cấu hình khoá thật** |
@@ -80,8 +80,14 @@ Migration **KHÔNG sửa** bảng cũ; chỉ tạo mới + thêm cột nullable:
 
 ### 5.3 Bộ test toàn dự án
 
-- Lần 1 (trong giai đoạn): 28 file PASS / 1 skipped (29), **232 PASS + 19 todo**, 142,6 s, một luồng.
-- Lần 2 (cuối giai đoạn): chạy trong §6.
+- **Lần 1**: 28 file PASS / 1 skipped (29), **232 PASS + 19 todo**, 142,6 s, một luồng.
+- **Lần 2 (cuối giai đoạn): KHÔNG kết luận được** — vitest worker crash `Worker exited unexpectedly`
+  sau ~16 s (vừa chạy vừa mất toàn bộ tiến trình; không phải test đỏ). Trạng thái mã nguồn hiện tại
+  so với lần 1: **giống hệt phần mã/test** (sau kiểm chứng phá, mọi sửa đều khôi phục bằng
+  `git checkout --`; duy nhất tài liệu thay đổi) ⇒ kết quả lần 1 vẫn là mốc đại diện.
+  Xác nhận bù ở trạng thái cuối: `tsc --noEmit` sạch + 26/26 test chatbot PASS (batch một luồng ~5 s)
+  + `npm run check-integrity` exit 0. Nguyên nhân crash (flaky worker pool của vitest/tinypool)
+  đã ghi lại cho giai đoạn sau — không tăng số lượt chạy full theo quy ước (tối đa 2×).
 
 ## 6. Đánh giá chất lượng truy xuất
 
