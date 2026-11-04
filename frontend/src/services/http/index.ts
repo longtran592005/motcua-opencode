@@ -1,4 +1,12 @@
-import type { ChatChunk, ChatService, LibraryService, NotificationService, AuditService } from '../contracts/system'
+import type {
+  ChatChunk,
+  ChatDraftResult,
+  ChatHandoffItem,
+  ChatService,
+  LibraryService,
+  NotificationService,
+  AuditService,
+} from '../contracts/system'
 import type { CatalogService, CrudService, RequestTypeService, UserService, WorkflowService } from '../contracts/catalog'
 import type { ApprovalService, DelegationService, OtpService } from '../contracts/approval'
 import type { DocumentService, TemplateService, VerifyService } from '../contracts/document'
@@ -40,17 +48,25 @@ const httpCatalogService: CatalogService = {
 }
 
 /** Đọc luồng Server-Sent Events cho câu trả lời của trợ lý ảo. */
-async function* streamChat(cauHoi: string): AsyncGenerator<ChatChunk, void, unknown> {
+async function* streamChat(cauHoi: string, sessionId?: string): AsyncGenerator<ChatChunk, void, unknown> {
   const response = await fetch(`${API_URL}/chat/stream`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
     },
-    body: JSON.stringify({ cauHoi }),
+    body: JSON.stringify({ cauHoi, ...(sessionId ? { sessionId } : {}) }),
   })
   if (!response.ok || !response.body) {
-    yield { loai: 'xong', maLoi: 'NETWORK_ERROR', traLoiDayDu: '' }
+    // RATE_LIMITED: đọc mã lỗi từ envelope (nếu có).
+    let maLoi = 'NETWORK_ERROR'
+    try {
+      const j = (await response.json()) as { error?: { code?: string } }
+      if (j.error?.code) maLoi = j.error.code
+    } catch {
+      /* giữ NETWORK_ERROR */
+    }
+    yield { loai: 'xong', maLoi, traLoiDayDu: '' }
     return
   }
   const reader = response.body.getReader()
@@ -82,6 +98,14 @@ const httpChatService: ChatService = {
       method: 'POST',
       body: { huuIch },
     }),
+  taoBanNhap: (actionId) =>
+    request<ChatDraftResult>(`/chat/actions/${actionId}/confirm`, { method: 'POST' }),
+  guiCanBo: (sessionId, cauHoi) =>
+    request<{ ma: string; trangThai: string }>('/chat/handoffs', {
+      method: 'POST',
+      body: { sessionId, cauHoi },
+    }),
+  cauHoiDaGui: () => request<ChatHandoffItem[]>('/chat/handoffs/mine'),
 }
 
 export interface ServiceRegistry {

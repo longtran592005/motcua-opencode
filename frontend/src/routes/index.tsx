@@ -27,6 +27,21 @@ import { NotFoundPage } from './NotFoundPage'
 const OverviewPage = lazy(() =>
   import('@/features/approvals/pages/OverviewPage').then((m) => ({ default: m.OverviewPage })),
 )
+const ChatbotHandoffPage = lazy(() =>
+  import('@/features/chatbot/pages/ChatbotHandoffPage').then((m) => ({
+    default: m.ChatbotHandoffPage,
+  })),
+)
+const ChatbotKnowledgePage = lazy(() =>
+  import('@/features/chatbot/pages/ChatbotKnowledgePage').then((m) => ({
+    default: m.ChatbotKnowledgePage,
+  })),
+)
+const ChatbotStatsPage = lazy(() =>
+  import('@/features/chatbot/pages/ChatbotStatsPage').then((m) => ({
+    default: m.ChatbotStatsPage,
+  })),
+)
 const RequestTypeAdminPage = lazy(() =>
   import('@/features/admin/pages/RequestTypeAdminPage').then((m) => ({
     default: m.RequestTypeAdminPage,
@@ -102,6 +117,10 @@ export function AppRoutes() {
             <Route path="/quan-ly/don/:ma" element={<ProcessingDetailPage />} />
             <Route path="/quan-ly/da-xu-ly" element={<ProcessedPage />} />
             <Route path="/quan-ly/uy-quyen" element={<DelegationPage />} />
+            {/* Chatbot AI — PHONG_DAO_TAO và ADMIN */}
+            <Route path="/quan-ly/cau-hoi-chatbot" element={<ChatbotHandoffPage />} />
+            <Route path="/quan-ly/kien-thuc-chatbot" element={<ChatbotKnowledgePage />} />
+            <Route path="/quan-ly/thong-ke-chatbot" element={<ChatbotStatsPage />} />
           </Route>
         </Route>
 

@@ -118,6 +118,24 @@ export const ADMIN_NAV: NavItem[] = [
     roles: ['TRUONG_KHOA', 'PHONG_DAO_TAO', 'ADMIN'],
   },
   {
+    to: '/quan-ly/cau-hoi-chatbot',
+    label: 'Câu hỏi chatbot',
+    icon: 'MessagesSquare',
+    roles: ['PHONG_DAO_TAO', 'ADMIN'],
+  },
+  {
+    to: '/quan-ly/kien-thuc-chatbot',
+    label: 'Kiến thức chatbot',
+    icon: 'BookOpen',
+    roles: ['PHONG_DAO_TAO', 'ADMIN'],
+  },
+  {
+    to: '/quan-ly/thong-ke-chatbot',
+    label: 'Thống kê chatbot',
+    icon: 'Bot',
+    roles: ['PHONG_DAO_TAO', 'ADMIN'],
+  },
+  {
     to: '/quan-ly/loai-don',
     label: 'Loại đơn & biểu mẫu',
     icon: 'FileCog',

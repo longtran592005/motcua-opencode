@@ -11,7 +11,7 @@ import { useChat } from '../hooks/useChat'
 export function ChatbotWidget() {
   const [open, setOpen] = React.useState(false)
   const [cauHoi, setCauHoi] = React.useState('')
-  const { messages, gui, dangGui, suggestions, danhGia, lamMoi } = useChat()
+  const { messages, gui, dangGui, suggestions, danhGia, lamMoi, taoBanNhap, guiCanBo, daGuiCauHoi } = useChat()
   const bottomRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
@@ -92,9 +92,34 @@ export function ChatbotWidget() {
                     </div>
                   </div>
                 ) : (
-                  messages.map((message) => (
-                    <ChatMessageBubble key={message.id} message={message} onDanhGia={danhGia} />
-                  ))
+                  <>
+                    {messages.map((message) => (
+                      <ChatMessageBubble
+                        key={message.id}
+                        message={message}
+                        onDanhGia={danhGia}
+                        onTaoBanNhap={taoBanNhap}
+                        onGuiCanBo={() => void guiCanBo()?.then(() => undefined)}
+                      />
+                    ))}
+                    {daGuiCauHoi.length > 0 && (
+                      <div className="rounded-lg border bg-card p-2 text-xs">
+                        <p className="mb-1 font-bold uppercase tracking-wide text-muted-foreground">
+                          Câu hỏi đã gửi cho cán bộ
+                        </p>
+                        <ul className="space-y-1">
+                          {daGuiCauHoi.slice(0, 5).map((item) => (
+                            <li key={item.ma}>
+                              <span className="font-medium">{item.ma}</span> — {item.cauHoi.slice(0, 80)}
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Câu trả lời cán bộ sẽ xuất hiện tại chuông thông báo.
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
                 <div ref={bottomRef} />
               </div>
@@ -117,6 +142,9 @@ export function ChatbotWidget() {
                 <Send className="size-4" />
               </Button>
             </form>
+            <p className="border-t bg-background px-3 py-1.5 text-center text-[10px] text-muted-foreground">
+              Trợ lý AI có thể nhầm lẫn, hãy xác nhận thông tin quan trọng với Phòng Đào tạo.
+            </p>
           </motion.div>
         )}
       </AnimatePresence>

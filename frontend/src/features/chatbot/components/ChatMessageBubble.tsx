@@ -1,16 +1,20 @@
-import { Bot, FileText, ThumbsDown, ThumbsUp, User } from 'lucide-react'
+import { Bot, FileText, SearchCheck, ThumbsDown, ThumbsUp, User } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '../hooks/useChat'
+import { ChatActionCards } from './ChatActionCards'
 
 interface ChatMessageBubbleProps {
   message: ChatMessage
   onDanhGia: (id: string, huuIch: boolean) => void
+  onTaoBanNhap?: (actionId: string) => Promise<{ maHoSo: string; duongDan: string } | null>
+  onGuiCanBo?: () => void
 }
 
 /** Một bong bóng hội thoại: câu hỏi của người dùng hoặc trả lời của trợ lý ảo. */
-export function ChatMessageBubble({ message, onDanhGia }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({ message, onDanhGia, onTaoBanNhap, onGuiCanBo }: ChatMessageBubbleProps) {
   const laNguoi = message.vaiTro === 'nguoi'
 
   return (
@@ -48,6 +52,16 @@ export function ChatMessageBubble({ message, onDanhGia }: ChatMessageBubbleProps
             <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-current align-middle" />
           )}
         </div>
+
+        {message.traCuuNhanh && !laNguoi && (
+          <Badge variant="outline" className="gap-1 text-[10px]">
+            <SearchCheck className="size-3" aria-hidden="true" /> Chế độ tra cứu nhanh
+          </Badge>
+        )}
+
+        {message.hanhDong && message.hanhDong.length > 0 && (
+          <ChatActionCards hanhDong={message.hanhDong} onTaoBanNhap={onTaoBanNhap} onGuiCanBo={onGuiCanBo} />
+        )}
 
         {message.nguon && message.nguon.length > 0 && (
           <div className="rounded-lg border bg-card p-2 text-left">

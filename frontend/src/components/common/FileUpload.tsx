@@ -19,6 +19,8 @@ interface FileUploadProps {
   /** Nhãn mô tả, hiển thị bên trong vùng kéo thả. */
   moTa?: string
   className?: string
+  /** (Bổ sung) Callback nhận tệp thô — dùng khi cần nội dung nhị phân thật. */
+  onFilesNguyenBan?: (files: File[]) => void
 }
 
 const MAX_BYTES_DEFAULT = 5 * 1024 * 1024
@@ -34,6 +36,7 @@ export function FileUpload({
   disabled,
   moTa,
   className,
+  onFilesNguyenBan,
 }: FileUploadProps) {
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = React.useState(false)
@@ -51,6 +54,7 @@ export function FileUpload({
       return true
     })
     if (!hopLe.length) return
+    onFilesNguyenBan?.(hopLe)
 
     for (const file of hopLe) {
       setDangTai({ ten: file.name, phanTram: 0 })

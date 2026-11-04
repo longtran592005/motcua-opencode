@@ -4,7 +4,14 @@ import { CHATBOT_SUGGESTIONS } from '@/lib/constants'
 import { includesText, sleep } from '@/lib/utils'
 import { clone, paginate, readOp, writeOp } from './helpers'
 import { addAudit, db } from './store'
-import type { AuditService, ChatChunk, ChatService, LibraryService, NotificationService } from '../contracts/system'
+import type {
+  AuditService,
+  ChatAction,
+  ChatChunk,
+  ChatService,
+  LibraryService,
+  NotificationService,
+} from '../contracts/system'
 
 function currentUser(): User {
   const user = db.currentUser
@@ -264,19 +271,7 @@ async function* streamText(text: string, maLoi?: string): AsyncGenerator<ChatChu
 
 export const mockChatService: ChatService = {
   async *hoi(cauHoi: string): AsyncGenerator<ChatChunk, void, unknown> {
-    await sleep(280)
-    const entry = timCauTraLoi(cauHoi)
-    if (!entry) {
-      const fallback =
-        'Tôi chưa tìm thấy quy định tương ứng trong kho văn bản của Trường. Bạn có thể diễn đạt lại câu hỏi, hoặc xem mục Biểu mẫu & tài liệu để tra cứu quy chế, quy định liên quan. Nếu cần hỗ trợ trực tiếp, vui lòng liên hệ Phòng Đào tạo qua hotline 0227.3633669.'
-      yield* streamText(fallback)
-      yield { loai: 'nguon', nguon: [] }
-      yield { loai: 'xong', traLoiDayDu: fallback }
-      return
-    }
-    yield* streamText(entry.traLoi)
-    yield { loai: 'nguon', nguon: entry.nguon, goiYForm: entry.goiYForm }
-    yield { loai: 'xong', traLoiDayDu: entry.traLoi, goiYForm: entry.goiYForm }
+    yield* mockHoi(cauHoi)
   },
 
   async cauHoiGoiY() {
@@ -287,6 +282,56 @@ export const mockChatService: ChatService = {
   async danhGia() {
     await sleep(180)
   },
+
+  async taoBanNhap() {
+    await sleep(200)
+    return { maHoSo: 'MC-2026-000042', duongDan: '/ho-so/MC-2026-000042', trangThai: 'DRAFT' }
+  },
+
+  async guiCanBo() {
+    await sleep(200)
+    return { ma: 'CH-2026-000001', trangThai: 'OPEN' }
+  },
+
+  async cauHoiDaGui() {
+    await sleep(150)
+    return []
+  },
 }
+
+/** Mock hội thoại (bổ sung giai đoạn chatbot: hành động giả + phiên). */
+async function* mockHoi(cauHoi: string): AsyncGenerator<ChatChunk, void, unknown> {
+  await sleep(280)
+  let sessionId = mockSessionId
+  if (!sessionId) {
+    sessionId = `ses_mock_${Date.now()}`
+    mockSessionId = sessionId
+  }
+  const entry = timCauTraLoi(cauHoi)
+  const hanhDongMock: ChatAction[] | undefined = entry?.goiYForm
+    ? [
+        {
+          id: 'act_mock_form',
+          kieu: 'OPEN_FORM',
+          maLoiDon: entry.goiYForm.requestTypeId,
+          tenLoaiDon: entry.goiYForm.ten,
+          duongDan: `/don/moi/${entry.goiYForm.requestTypeId}`,
+        },
+      ]
+    : undefined
+  if (!entry) {
+    const fallback =
+      'Tôi chưa tìm thấy quy định tương ứng trong kho văn bản của Trường. Bạn có thể diễn đạt lại câu hỏi, hoặc xem mục Biểu mẫu & tài liệu để tra cứu quy chế, quy định liên quan. Nếu cần hỗ trợ trực tiếp, vui lòng liên hệ Phòng Đào tạo.'
+    yield* streamText(fallback)
+    yield { loai: 'nguon', nguon: [], hanhDong: [{ id: 'act_mock_handoff', kieu: 'OFFER_HANDOFF' }], cheDo: 'SEARCH_ONLY' as const, sessionId }
+    yield { loai: 'xong', traLoiDayDu: fallback, sessionId }
+    return
+  }
+  yield* streamText(entry.traLoi)
+  yield { loai: 'nguon', nguon: entry.nguon, goiYForm: entry.goiYForm, hanhDong: hanhDongMock, cheDo: 'LLM' as const, sessionId }
+  yield { loai: 'xong', traLoiDayDu: entry.traLoi, goiYForm: entry.goiYForm, sessionId }
+}
+
+let mockSessionId: string | undefined
 
 export type { LibraryItem, Notification }
