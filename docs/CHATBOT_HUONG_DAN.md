@@ -10,47 +10,92 @@ Gemini và kiểm thử tay 8 bước. Quyết định thiết kế: xem `docs/Q
 
 Migration mới (không sửa migration cũ): `backend/prisma/migrations/20261104010000_chatbot_knowledge_handoff/`.
 
-Bảng/cột được tạo: `chat_sessions`, `chat_messages` (cột nullable mới),
-`knowledge_documents`, `knowledge_chunks`, `chat_feedback`, `chat_handoffs`
-(mã `CH-YYYY-NNNNNN`), hàm `next_ma_chat_handoff()`, các index phục vụ truy xuất.
+**Đối tượng DO MIGRATION NÀY TẠO** (đối chiếu từng dòng với `migration.sql`):
+- 5 enum: `KnowledgeSourceType`, `KnowledgeStatus`, `FeedbackRating`, `HandoffStatus`, `ChatMode`.
+- 4 bảng: `knowledge_documents`, `knowledge_chunks`, `chat_feedback`, `chat_handoffs`;
+  + bảng phụ mã `chat_handoff_code_year`.
+- 2 hàm: `next_ma_chat_handoff()`, `sync_chat_handoff_sequence()`.
+- 5 cột nullable thêm vào `chat_messages` (bảng CÓ SẴN của dự án): `hanh_dong`, `che_do`, `mo_hinh`, `thoi_gian_ms`, `nguoi_dung_id`.
+- 7 index.
+
+> `chat_sessions` và `chat_messages` là bảng CÓ SẴN của dự án — migration **KHÔNG tạo**
+> hai bảng này, chỉ Thêm cột nullable vào `chat_messages`.
 
 > ⚠️ Trong giai đoạn phát triển, migration **chỉ đã áp cho CSDL TEST**
-> (`localhost:5434/motcua_test`). Áp cho dev bằng lệnh dưới đây — chỉ chạy khi
-> bạn chắc chắn (không có thao tác phá dữ liệu cũ):
+> (`localhost:5434/motcua_test`). Áp cho dev bằng đúng QUY TRÌNH DUY NHẤT dưới đây.
+
+### 1.1. Quy trình áp lên dev (duy nhất 1 cách — qua Prisma, ghi `_prisma_migrations`)
 
 ```powershell
-# CSDL dev mặc định: localhost:5433/motcua (docker: motcua-postgres)
+# BƯỚC 0 (bắt buộc): sao lưu dev trước
+$env:PGPASSWORD='<mật khẩu dev>'
+$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+& 'C:\Program Files\PostgreSQL\18\bin\pg_dump.exe' -h localhost -p 5433 -U motcua -d motcua -F c `
+  -f "D:\1_Tran Van Long\NCKH\motcua-opencode\backend\backups\dev-truoc-chatbot-$stamp.dump"
+
+# BƯỚC 1: áp migration bằng Prisma (chỉ áp cái CHƯA được ghi, tự ghi _prisma_migrations)
+Set-Location backend
+$env:DATABASE_URL='postgresql://motcua:<mật khẩu dev>@localhost:5433/motcua?schema=public'
+npx prisma migrate deploy
+npx prisma generate
+
+# BƯỚC 2: đối chiếu đã ghi đúng
+npx prisma migrate status
+# hoặc:
 $env:PGPASSWORD='<mật khẩu dev>'
 & 'C:\Program Files\PostgreSQL\18\bin\psql.exe' -h localhost -p 5433 -U motcua -d motcua `
-  -f 'D:\1_Tran Van Long\NCKH\motcua-opencode\backend\prisma\migrations\20261104010000_chatbot_knowledge_handoff\migration.sql'
-
-# Đối chiếu trạng thái:
-& 'C:\Program Files\PostgreSQL\18\bin\psql.exe' -h localhost -p 5433 -U motcua -d motcua `
-  -c "SELECT * FROM _prisma_migrations WHERE migration_name LIKE '20261104010000%';"
+  -c "SELECT migration_name, finished_at FROM _prisma_migrations WHERE migration_name LIKE '20261104010000%';"
 ```
 
-Hoặc bằng Prisma (tự ghi `_prisma_migrations`):
+KHÔNG dùng `psql -f migration.sql` — cách này KHÔNG ghi `_prisma_migrations`, làm
+Prisma tưởng migration chưa áp và có thể re-apply gây mâu thuẫn.
+
+### 1.2. Khôi phục dev từ bản sao lưu (khi sai/cần lùi)
+
+Chiến lược an toàn: khôi phục vào DB MỚI, đối chiếu, rồi mới hoán đổi. `motcua_lv`
+là "bản lưu hiện trạng" — sau khi chạy ổn có thể giữ lại hoặc xóa sau.
 
 ```powershell
-Set-Location backend
-$env:DATABASE_URL='postgresql://motcua:<mật khẩu>@localhost:5433/motcua?schema=public'
-npx prisma migrate deploy          # chỉ áp migration CHƯA được ghi
-npx prisma generate
+$env:PGPASSWORD='<mật khẩu dev>'
+$dump = 'D:\1_Tran Van Long\NCKH\motcua-opencode\backend\backups\dev-truoc-chatbot-<stamp>.dump'
+
+# B1: giữ hiện trạng dev sang DB tạm, rồi tạo dev sạch
+& 'C:\Program Files\PostgreSQL\18\bin\psql.exe' -h localhost -p 5433 -U postgres `
+  -c "ALTER DATABASE motcua RENAME TO motcua_lv;" `
+  -c "CREATE DATABASE motcua OWNER motcua;"
+
+# B2: khôi phục bản sao lưu vào dev (đầy đủ schema + data checkpoint trước chatbot)
+& 'C:\Program Files\PostgreSQL\18\bin\pg_restore.exe' -h localhost -p 5433 -U motcua -d motcua $dump
+
+# B3: đối chiếu xong, ổn thì có thể xóa DB tạm (tự quyết khi nào)
+# & 'C:\Program Files\PostgreSQL\18\bin\psql.exe' -h localhost -p 5433 -U postgres `
+#   -c "DROP DATABASE motcua_lv;"
 ```
 
-Rollback (chỉ áp trên môi trường phát triển, dùng khi thật sự cần):
+### 1.3. Rollback thủ công (khi THẬT SỰ cần — chỉ gỡ đúng đối tượng do migration chatbot tạo)
 
 ```sql
--- Xóa đúng các đối tượng chatbot, không đụng bảng khác (xem DDL trong BAO_CAO_CHATBOT.md)
+-- Gỡ bảng tri thức/handoff/feedback + bảng phụ mã (FK cascade xử lý chunk)
 DROP TABLE IF EXISTS chat_feedback CASCADE;
 DROP TABLE IF EXISTS chat_handoffs CASCADE;
 DROP TABLE IF EXISTS knowledge_chunks CASCADE;
 DROP TABLE IF EXISTS knowledge_documents CASCADE;
+DROP TABLE IF EXISTS chat_handoff_code_year CASCADE;
+-- Gỡ 5 cột nullable khỏi chat_messages (bảng CÓ SẴN, KHÔNG xóa bảng)
 ALTER TABLE chat_messages
   DROP COLUMN IF EXISTS hanh_dong, DROP COLUMN IF EXISTS che_do, DROP COLUMN IF EXISTS mo_hinh,
   DROP COLUMN IF EXISTS thoi_gian_ms, DROP COLUMN IF EXISTS nguoi_dung_id;
-DROP TABLE IF EXISTS chat_sessions CASCADE;
+-- Gỡ hàm sinh mã handoff và bảng phụ mã
 DROP FUNCTION IF EXISTS next_ma_chat_handoff();
+DROP FUNCTION IF EXISTS sync_chat_handoff_sequence();
+-- Gỡ enum (chỉ khi chắc chắn không còn cột nào tham chiếu)
+DROP TYPE IF EXISTS "KnowledgeSourceType";
+DROP TYPE IF EXISTS "KnowledgeStatus";
+DROP TYPE IF EXISTS "FeedbackRating";
+DROP TYPE IF EXISTS "HandoffStatus";
+DROP TYPE IF EXISTS "ChatMode";
+-- Đồng bộ sách lược: QUAN TRỌNG — KHÔNG bao giờ xóa chat_sessions, chat_messages,
+-- users hoặc bất kỳ bảng nào khác; rollback ở trên chỉ gỡ đúng đối tượng do migration chatbot tạo.
 DELETE FROM _prisma_migrations WHERE migration_name = '20261104010000_chatbot_knowledge_handoff';
 ```
 
@@ -83,20 +128,31 @@ Script `chatbot:ingest` an toàn để chạy lại (bỏ qua tài liệu không
 
 ## 3. Nạp kho tri thức (77 tài liệu thư viện)
 
+**Hai mẫu lệnh — PHẢI đổi `DATABASE_URL` đúng CSDL đang nạp** (kho tri thức nằm trong
+CSDL, nạp vào CSDL nào chỉ phục vụ CSDL đó):
+
 ```powershell
+# MẪU A — nạp vào CSDL TEST (dùng khi phát triển/kiểm thử; hiện đã nạp xong):
 Set-Location backend
-$env:DATABASE_URL='postgresql://motcua:<mật khẩu>@localhost:5434/motcua_test?schema=public'
+$env:DATABASE_URL='postgresql://motcua:motcua@localhost:5434/motcua_test?schema=public'
+npm run chatbot:ingest
+
+# MẪU B — nạp vào CSDL DEV (SAU KHI đã áp migration §1.1; đổi mật khẩu đúng dev):
+$env:DATABASE_URL='postgresql://motcua:<mật khẩu dev>@localhost:5433/motcua?schema=public'
 npm run chatbot:ingest
 ```
 
 Kết quả tham chiếu (chạy trên CSDL TEST, không có khoá Gemini):
 tài liệu mới/cập nhật 67, bỏ qua 10; 77/77 nạp thành công READY, 333 đoạn trích;
-2 tệp `.xls` bỏ qua; khớp biểu mẫu ↔ loại đơn 9/77 (bảng `backend/src/modules/chatbot/form-map.json`).
+2 tệp `.xls` bỏ qua; khớp biểu mẫu ↔ loại đơn (bảng `backend/src/modules/chatbot/form-map.json`).
 
-Chấm điểm truy xuất (30 câu, tiêu chí top-3 ≥ 80%):
+Chấm điểm truy xuất (3 chỉ số: bám-tên-tài liệu / tự nhiên / ngoài-phạm-vi):
 
 ```powershell
-npm run chatbot:eval    # kết quả hiện tại: 27/30 = 90% — ĐẠT
+# CSDL TEST:
+$env:DATABASE_URL='postgresql://motcua:motcua@localhost:5434/motcua_test?schema=public'
+npm run chatbot:eval
+# CSDL DEV: đổi DATABASE_URL sang dev rồi chạy lại lệnh trên
 ```
 
 ---
@@ -112,7 +168,8 @@ Dùng tài khoản demo (mật khẩu `demo1234`): sinh viên — mã số `SINH
    chatbot đọc đúng mã + nút “Mở hồ sơ”.
 3. **Chống IDOR** — dùng người dùng khác hỏi cùng mã trên → chatbot trả “không tìm thấy
    trong danh sách đơn của bạn”, không tiết lộ trạng thái của người khác.
-4. **Đề xuất bản nháp** — hỏi *“giúp em làm đơn GD-BANG-DIEM”* (mã loại đơn thật):
+4. **Đề xuất bản nháp** — hỏi *“giúp em làm đơn có mã rt_dbt”* (mã loại đơn CÓ SẴN trong seed:
+   `rt_dbt` — Đơn xin cấp bảng điểm; xem danh sách mã tại `/api/v1/request-types`):
    nhận thẻ đề xuất với trường từ biểu mẫu; bấm **Tạo bản nháp** → hệ thống tạo đơn
    `MC-` mới ở trang *Hồ sơ của tôi* (trạng thái NHÁP, chưa nộp); bấm lần hai → thông báo đã thực hiện.
 5. **Chuyển cán bộ** — hỏi câu ngoài tri thức, bấm nút chuyển cán bộ (hoặc tự soạn):
