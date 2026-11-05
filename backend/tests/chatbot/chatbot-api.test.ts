@@ -78,7 +78,8 @@ beforeAll(async () => {
   // Hồ sơ của A dùng để kiểm tra chống IDOR ở công cụ tra cứu.
   draftOfA = await createDraft(sessionA, await pickRequestTypeId())
   // Chunk kiến thức riêng với từ khóa đặc trưng → bảo đảm điểm truy xuất
-  // (0.85 khi chỉ khớp BM25) ≥ CHAT_MIN_SCORE để kiểm tra bộ nhớ đệm.
+  // (điểm phủ từ khóa hữu ích [0,1] khi chỉ khớp BM25) ≥ CHAT_MIN_SCORE để
+  // kiểm tra bộ nhớ đệm.
   const cacheDoc = await prisma.knowledgeDocument.create({
     data: {
       ma: 'KB-test-chatbot-cache',

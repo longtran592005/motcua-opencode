@@ -60,11 +60,14 @@ afterAll(async () => {
 })
 
 describe('Truy xuất tri thức (BM25 + RRF, điểm trong [0,1])', () => {
-  it('tìm đúng chunk theo từ khóa đặc trưng, điểm chỉ-BM25 = 0.85', async () => {
+  it('tìm đúng chunk theo từ khóa đặc trưng, điểm phủ từ khóa tuyệt đối > 0.5', async () => {
     const results = await searchKnowledge(`điều kiện ${TOKEN} thế nào?`, { topK: 5 })
     expect(results.length).toBeGreaterThanOrEqual(1)
     expect(results[0]!.content).toContain(TOKEN)
-    expect(results[0]!.score).toBeCloseTo(0.85, 1) // 0.85 * kwNorm(=1)
+    // Thang điểm mới (Q3): phủ-từ-khóa-IDF tuyệt đối trong [0,1]. Chunk khớp cả
+    // 3 từ hữu ích (trong đó từ hiếm TOKEN w≈1) → điểm phải rõ ràng trên 0.5.
+    expect(results[0]!.score).toBeGreaterThan(0.5)
+    expect(results[0]!.score).toBeLessThanOrEqual(1)
     expect(results[0]!.rank).toBe(1)
   })
 

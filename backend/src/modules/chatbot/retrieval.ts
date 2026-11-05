@@ -5,9 +5,10 @@
  * - Chỉ mục dựng trong bộ nhớ từ bảng knowledge_chunks (JOIN knowledge_documents
  *   có trạng thái READY, chưa xóa mềm). Nạp lại được khi kiến thức thay đổi.
  * - Chunk chưa có embedding vẫn tìm được bằng BM25.
- * - Điểm cuối trong [0,1] để so với CHAT_MIN_SCORE: kết hợp có cả hai nguồn
- *   thì 0.6*BM25-chuẩn-hóa + 0.4*cosine; chỉ BM25 thì nhân 0.85; chỉ vector thì
- *   dùng cosine (clamp [0,1]). Thứ tự xếp theo RRF.
+ * - Điểm cuối trong [0,1] để so với CHAT_MIN_SCORE: điểm BM25 là "độ phủ từ
+ *   khóa hữu ích có trọng số IDF" (tuyệt đối, không chuẩn hóa theo max); hợp
+ *   cả hai nguồn thì 0.6*phủ-từ-khóa + 0.4*cosine; chỉ vector thì dùng cosine
+ *   clamp [0,1]. Thứ tự chọn ứng viên theo RRF, thứ hạng cuối theo điểm.
  */
 import { prisma } from '../../lib/prisma'
 import { keywords, tokenize } from './vietnamese'
@@ -26,7 +27,7 @@ export interface RetrievedChunk {
 
 export interface SearchResult extends RetrievedChunk {
   score: number
-  /** Điểm BM25 chuẩn hóa [0,1] trong tập kết quả. */
+  /** Điểm phủ từ khóa hữu ích tuyệt đối [0,1] (trọng số IDF + bão hòa tf). */
   kwScore: number
   /** Cosine similarity clamp [0,1], null khi chunk/query không có embedding. */
   vecScore: number | null
@@ -63,8 +64,6 @@ const K1 = 1.5
 const B = 0.75
 /** Hằng số RRF chuẩn. */
 const RRF_K = 60
-/** Trọng số khi chỉ có tín hiệu BM25 (hạ nhẹ để ưu tiên khớp cả hai). */
-const KW_ONLY_FACTOR = 0.85
 const MAX_CONTENT_CHARS = 12_000
 
 let index: IndexState | null = null
@@ -205,7 +204,19 @@ export interface SearchOptions {
 }
 
 /**
- * Tìm kiếm lai. Trả tối đa topK kết quả có điểm >= minScore, xếp theo RRF.
+ * Điểm BM25 KHÔNG còn chuẩn hóa theo max của tập truy xuất (nguồn điểm giả
+ * nhường đầu bảng). Thay bằng "độ phủ từ khóa hữu ích có trọng số IDF":
+ * - Từ khóa hữu ích = từ không đệm và tần suất tài liệu df < 60% số đoạn.
+ * - Trọng số w(t) = min(1, idf(t)/idfRef), idfRef = idf của từ hiếm nhất có thể
+ *   đạt (df=1) — từ phổ biến ("điều kiện", "quy trình", "xin", "đơn") trọng số
+ *   thấp, từ hiếm ~1.
+ * - Điểm đoạn = Σ w(t) với t CÓ TRONG đoạn / Σ w(t) toàn bộ từ hữu ích
+ *   (tỷ lệ trọng số từ khóa được phủ; tf/độ dài để dành cho BM25 thô xếp hạng).
+ * ⇒ Điểm nằm trong [0,1] TUYỆT ĐỐI: ngưỡng CHAT_MIN_SCORE có nghĩa thật,
+ * câu hỏi ngoài phạm vi không thể đạt ngưỡng chỉ nhờ xếp đầu.
+ */
+/**
+ * Tìm kiếm lai: trả tối đa topK kết quả có điểm >= minScore.
  * Không bao giờ ném lỗi — lỗi nạp chỉ mục trả về danh sách rỗng (an toàn).
  */
 export async function searchKnowledge(
@@ -230,7 +241,23 @@ export async function searchKnowledge(
   const dfs = state.df
   const avgLen = state.avgLen
 
-  // Barem BM25 cho mọi chunk có term trùng (chỉ tính chunk có chung ≥1 term).
+  // Q3: TỪ KHÓA HỮU ÍCH = token không đệm của truy vấn có df < 60% số đoạn —
+  // loại bỏ từ phổ biến ("điều kiện", "quy trình", "xin", "đơn") hiện ở hầu hết
+  // đoạn. Trọng số IDF chuẩn hóa theo idfRef = idf của từ HIẾM NHẤT CÓ THỂ ĐẠT
+  // (df=1 đoạn/334→≈5.4): từ xuất hiện ở 1 đoạn w=1, từ phổ biến w thấp.
+  const idfRef = Math.log(1 + (n - 0.5) / 1.5)
+  const useful: Array<{ t: string; w: number }> = []
+  let weightSum = 0
+  for (const t of new Set(qTerms)) {
+    const df = dfs.get(t) ?? 0
+    if (df >= 0.6 * n) continue
+    const w = Math.min(1, idf(df, n) / idfRef)
+    useful.push({ t, w })
+    weightSum += w
+  }
+
+  // Barem BM25 thô cho mọi chunk có term trùng — dùng cho RRF xếp hạng (không
+  // phải để chuẩn hóa theo max như cũ).
   const kwScores = new Map<string, number>()
   if (qTerms.length) {
     const qSet = new Set(qTerms)
@@ -242,7 +269,18 @@ export async function searchKnowledge(
       if (s > 0) kwScores.set(c.chunkId, s)
     }
   }
-  const kwMax = kwScores.size ? Math.max(...kwScores.values()) : 0
+
+  // Điểm phủ từ khóa TUYỆT ĐỐI [0,1] của một chunk: Σ w(t) với t xuất hiện trong
+  // chunk / Σ w(t) trên TẤT CẢ từ hữu ích (= tỷ lệ trọng số từ khóa được phủ).
+  // Nghĩa tuyệt đối: ô trọn mọi từ hiếm → ~1; chỉ tràn từ phổ biến → thấp (bị
+  // lọc df hoặc trọng số nhỏ). TF/độ dài không vào điểm này — đó là việc của
+  // BM25 thô ở phần xếp hạng RRF.
+  const coverageScore = (c: IndexedChunk): number => {
+    if (weightSum <= 0) return 0
+    let sum = 0
+    for (const { t, w } of useful) if (c.tf.has(t)) sum += w
+    return sum / weightSum
+  }
 
   // Vector: cosine truy vấn/chunk.
   const vecScores = new Map<string, number>()
@@ -256,11 +294,10 @@ export async function searchKnowledge(
   // RRF: xếp hạng hai danh sách rồi hợp nhất.
   const kwRank = [...kwScores.entries()].sort((a, b) => b[1] - a[1])
   const vecRank = [...vecScores.entries()].sort((a, b) => b[1] - a[1])
-  const rrf = new Map<string, { rrf: number; kw: number; vec: number | null }>()
-  kwRank.forEach(([id, s], i) => {
-    const cur = rrf.get(id) ?? { rrf: 0, kw: 0, vec: null as number | null }
+  const rrf = new Map<string, { rrf: number; vec: number | null }>()
+  kwRank.forEach(([id], i) => {
+    const cur = rrf.get(id) ?? { rrf: 0, vec: null as number | null }
     cur.rrf += 1 / (RRF_K + i + 1)
-    cur.kw = kwMax > 0 ? s / kwMax : 0
     rrf.set(id, cur)
   })
   vecRank.forEach(([id, s], i) => {
@@ -279,11 +316,11 @@ export async function searchKnowledge(
   for (const [id, m] of candidates) {
     const c = byId.get(id)
     if (!c) continue
-    const kwNorm = m.kw
+    const kwAbs = weightSum > 0 ? coverageScore(c) : 0
     const vec = m.vec
     let score: number
-    if (vec !== null && kwNorm > 0) score = 0.6 * kwNorm + 0.4 * vec
-    else if (kwNorm > 0) score = KW_ONLY_FACTOR * kwNorm
+    if (vec !== null && kwAbs > 0) score = 0.6 * kwAbs + 0.4 * vec
+    else if (kwAbs > 0) score = kwAbs
     else if (vec !== null) score = vec
     else score = 0
     if (score < minScore) continue
@@ -298,7 +335,7 @@ export async function searchKnowledge(
       heading: c.heading,
       content: c.content,
       score: Number(score.toFixed(4)),
-      kwScore: Number(kwNorm.toFixed(4)),
+      kwScore: Number(kwAbs.toFixed(4)),
       vecScore: vec === null ? null : Number(vec.toFixed(4)),
       rank: 0,
     })
