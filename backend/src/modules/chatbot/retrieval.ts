@@ -11,7 +11,7 @@
  *   clamp [0,1]. Thứ tự chọn ứng viên theo RRF, thứ hạng cuối theo điểm.
  */
 import { prisma } from '../../lib/prisma'
-import { keywords, tokenize } from './vietnamese'
+import { keywords, tokenize, expandKeywords } from './vietnamese'
 
 export interface RetrievedChunk {
   chunkId: string
@@ -236,7 +236,10 @@ export async function searchKnowledge(
   }
   if (!state || state.chunks.length === 0) return []
 
-  const qTerms = keywords(query)
+  // Q3: TỪ KHÓA HỮU ÍCH = token không đệm (SAU MỞ RỘNG ĐỒNG NGHĨA) có df < 60%
+  // số đoạn — loại bỏ từ phổ biến ("điều kiện", "quy trình", "xin", "đơn")
+  // hiện ở hầu hết đoạn.
+  const qTerms = expandKeywords(query)
   const n = state.chunks.length
   const dfs = state.df
   const avgLen = state.avgLen
