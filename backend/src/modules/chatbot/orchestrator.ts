@@ -17,6 +17,7 @@ import { SYSTEM_PROMPT } from './prompts'
 import { cacheKey } from './vietnamese'
 import { getLlmProvider, LlmError, type LLMProvider } from './llm/provider'
 import { makeAction, type ChatAction } from './actions'
+import { GOI_Y_TRUNG_BINH, entryByLibraryId, gateNopOnlineFor } from './formmap'
 import type { Prisma } from '@prisma/client'
 import {
   get_application_status,
@@ -190,6 +191,10 @@ export async function runTool(ten: string, thamSo: unknown, user: Express.AuthUs
     case 'suggest_request_types': {
       const r = await suggest_request_types(thamSo)
       const g0 = r.goiY[0]
+      // Q10: cặp trung-binh trong form-map KHÔNG được gắn nút mở-đơn tự động
+      // (gợi ý vẫn nằm trong payload, người dùng tự quyết khi nào nộp).
+      const gate = g0 ? gateNopOnlineFor(g0.maLoaiDon) : null
+      if (gate === 'trung-binh') return { label: ten, payload: r, actions: [] }
       return { label: ten, payload: r, goiYForm: g0 ? { requestTypeId: g0.maLoaiDon, ten: g0.ten } : undefined, actions: [] }
     }
     case 'propose_draft': {
@@ -425,13 +430,16 @@ export async function orchestrate(deps: OrchestratorDeps): Promise<ChatOutcome> 
   const notFound = /chưa tìm thấy thông tin này trong tài liệu/i.test(answer) || (!enoughEvidence && mode === 'SEARCH_ONLY')
   if (notFound) actions.push(makeAction({ kieu: 'OFFER_HANDOFF' }))
 
-  // 8) Hành động do server dựng từ dữ liệu thật (Q8).
+  // 8) Hành động do server dựng từ dữ liệu thật (Q8 + Q10).
+  //  - Cặp form-map tin cậy CAO → gắn nút mở-đơn trực tuyến (goiYForm).
+  //  - Cặp trung-binh → chỉ tải biểu mẫu + câu khuyến nghị, KHÔNG nút online.
   const libDocs = new Map(retrieved.map((r) => [r.chunkId, r]))
   const libraryIds = [...new Set(retrieved.map((r) => r.libraryDocumentId).filter((x): x is string => Boolean(x)))]
   if (libraryIds.length) {
     const libs = await prisma.libraryDocument.findMany({ where: { id: { in: libraryIds } }, select: { id: true, ten: true, url: true } })
     const libById = new Map(libs.map((l) => [l.id, l]))
     const seen = new Set<string>()
+    let trungBinhAdvice = false
     for (const r of retrieved) {
       if (!r.libraryDocumentId) continue
       const lib = libById.get(r.libraryDocumentId)
@@ -444,7 +452,28 @@ export async function orchestrate(deps: OrchestratorDeps): Promise<ChatOutcome> 
       )
       if (seen.size >= 3) break
     }
+    // Q10: nếu tài liệu đầu tiên trong tập truy xuất là cặp trung-binh (hoặc không
+    // ghép) — không nút online; đi kèm câu khuyến nghị nộp bằng "Dịch vụ Một cửa".
+    const firstEntry = retrieved.find((r) => r.libraryDocumentId && libById.has(r.libraryDocumentId))
+    if (firstEntry?.libraryDocumentId) {
+      const lib = libById.get(firstEntry.libraryDocumentId)
+      const pair = lib ? entryByLibraryId(firstEntry.libraryDocumentId) : null
+      if (pair?.maLoaiDon && pair.doTinCay === 'trung-binh') {
+        trungBinhAdvice = true
+      }
+      if (pair?.maLoaiDon && pair.doTinCay === 'cao') {
+        const rt = await prisma.requestType.findFirst({
+          where: { ma: pair.maLoaiDon, hoatDong: true, deletedAt: null },
+          select: { ma: true, ten: true },
+        })
+        if (rt && !goiYForm) goiYForm = { requestTypeId: rt.ma, ten: rt.ten }
+      }
+    }
+    if (trungBinhAdvice && !answer.includes(GOI_Y_TRUNG_BINH)) {
+      answer = `${answer}\n${GOI_Y_TRUNG_BINH}`
+    }
   }
+
 
   // 9) Lưu tin nhắn trợ lý.
   const latencyMs = Date.now() - t0

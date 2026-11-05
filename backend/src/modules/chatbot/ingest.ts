@@ -169,9 +169,17 @@ export interface FormMapEntry {
   maLoaiDon: string | null
   tenLoaiDon: string | null
   doTinCay: 'cao' | 'trung-binh' | 'thap'
+  /** Rỗng mặc định — người quản trị tự đi tên để đánh marks "đã rà tay". */
+  xacNhanBoi?: string
 }
 
-/** So khớp gần đúng tên: đếm token chung giữa tên biểu mẫu và tên loại đơn. */
+/**
+ * So khớp gần đúng tên. LƯU Ý (Q10): chỉ tự ghép ở mức TIN CẬY CAO (điểm ≥ 0.7
+ * và tên loại đơn nằm trọn trong tên biểu mẫu — cùng một thủ tục rõ ràng).
+ * KHÔNG tự ghép mức trung-binh (dễ ghép sai thủ tục khác nghĩa — ví dụ biểu mẫu
+ * "chuyển lớp" ≠ "chuyển ngành"); những cặp như vậy chỉ được tạo khi người
+ * quản trị điền tay vào form-map.json rồi đánh dấu `xacNhanBoi`.
+ */
 export function matchFormsToRequestTypes(
   forms: Array<{ id: string; ten: string }>,
   requestTypes: Array<{ ma: string; ten: string }>,
@@ -183,13 +191,16 @@ export function matchFormsToRequestTypes(
         .split(/[^a-z0-9]+/)
         .filter((t) => t.length > 1),
     )
-    let best: { ma: string; ten: string; score: number } | null = null
+    let best: { ma: string; ten: string; score: number; chungThuc: boolean } | null = null
     for (const rt of requestTypes) {
       const rtTokens = normalizeText(rt.ten).split(/[^a-z0-9]+/).filter((t) => t.length > 1)
       let common = 0
       for (const t of rtTokens) if (ft.has(t)) common += 1
       const score = rtTokens.length ? common / Math.max(ft.size, rtTokens.length) : 0
-      if (!best || score > best.score) best = { ma: rt.ma, ten: rt.ten, score }
+      if (!best || score > best.score) {
+        // Tin cậy cao chỉ khi: điểm ≥ 0.7 VÀ mọi token của tên loại đơn đều có trong tên biểu mẫu.
+        best = { ma: rt.ma, ten: rt.ten, score, chungThuc: score >= 0.7 && common === rtTokens.length }
+      }
     }
     const e: FormMapEntry = {
       tenBieuMau: f.ten,
@@ -197,23 +208,32 @@ export function matchFormsToRequestTypes(
       maLoaiDon: null,
       tenLoaiDon: null,
       doTinCay: 'thap',
+      xacNhanBoi: '',
     }
-    if (best && best.score >= 0.7) {
+    if (best && best.chungThuc) {
       e.maLoaiDon = best.ma
       e.tenLoaiDon = best.ten
       e.doTinCay = 'cao'
-    } else if (best && best.score >= 0.45) {
-      e.maLoaiDon = best.ma
-      e.tenLoaiDon = best.ten
-      e.doTinCay = 'trung-binh'
     }
     return e
   })
 }
 
-/** Ghi/nhật kỳ form-map.json (để người dùng rà lại tay). */
+/**
+ * Ghi form-map.json — KHÔNG đè lên công rà tay của người: những dòng cũ có
+ * `xacNhanBoi` khác rỗng (hoặc đã ghép trung-binh do điền tay) được giữ nguyên
+ * theo `tenBieuMau`, phần còn lại cập nhật theo kết quả so khớp mới.
+ */
 export function writeFormMap(entries: FormMapEntry[], file = path.resolve(PUBLIC_ROOT, '../../backend', 'src/modules/chatbot/form-map.json')): void {
-  fs.writeFileSync(file, JSON.stringify(entries, null, 2), 'utf8')
+  let old: FormMapEntry[] = []
+  try {
+    old = JSON.parse(fs.readFileSync(file, 'utf8')) as FormMapEntry[]
+  } catch {
+    /* chưa có file trước đó */
+  }
+  const byName = new Map(old.filter((o) => o.xacNhanBoi || (o.doTinCay === 'trung-binh' && o.maLoaiDon)).map((o) => [o.tenBieuMau, o]))
+  const merged = entries.map((e) => byName.get(e.tenBieuMau) ?? e)
+  fs.writeFileSync(file, JSON.stringify(merged, null, 2), 'utf8')
 }
 
 /* ------------------------------------------------------------------ *
