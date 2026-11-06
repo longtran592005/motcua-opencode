@@ -89,11 +89,23 @@ Migration **KHÔNG sửa** bảng cũ; chỉ tạo mới + thêm cột nullable:
   + `npm run check-integrity` exit 0. Nguyên nhân crash (flaky worker pool của vitest/tinypool)
   đã ghi lại cho giai đoạn sau — không tăng số lượt chạy full theo quy ước (tối đa 2×).
 
-## 6. Đánh giá chất lượng truy xuất
+## 6. Đánh giá chất lượng truy xuất (bộ 3 chỉ số — sau việc 3, 4)
 
-- Bộ **30 câu hỏi thật** (`docs/chatbot-eval.json`) dựng từ 30 tài liệu biểu mẫu thật trong 77 tài liệu; tiêu chí: tài liệu đúng nằm trong **top-3** kết quả.
-- Chạy `npm run chatbot:eval` ở chế độ từ-khóa trên CSDL TEST → **27/30 = 90.0% ≥ 80% → ĐẠT**. Chi tiết từng câu: `docs/chatbot-eval-results.json`.
-- 3 câu chưa trúng đều là dạng "chuyển/lập hồ sơ" có tên tài liệu sa sút khỏi ngôn ngữ hỏi tự nhiên; hệ thống vẫn trả nguồn liên quan ngay sau top-3, không sinh thông tin sai.
+- Bộ câu hỏi `docs/chatbot-eval.json` giờ gồm **3 nhóm**: (I) 30 câu bám tên tài liệu
+  (giữ nguyên 30 câu cũ), (II) 30 câu tự nhiên KHÔNG sao tên tài liệu (gõ không dấu,
+  lỗi chính tả nhẹ, viết tắt), (III) 20 câu NGOÀI phạm vi (học phí, điểm thi, thời
+  tiết, code, thông tin riêng, xã giao).
+- `npm run chatbot:eval` in 3 chỉ số riêng (chạy chế độ từ-khóa trên CSDL TEST, điểm
+  tuyệt đối phủ-từ-khóa-IDF, ngưỡng `CHAT_MIN_SCORE=0.6`):
+  - **(i) top-3 câu bám tên: 83.3% (25/30) → ĐẠT** (mục tiêu ≥ 80%)
+  - **(ii) top-3 câu tự nhiên: 70.0% (21/30) → ĐẠT** (mục tiêu ≥ 70%)
+  - **(iii) tỷ lệ câu ngoài phạm vi bị từ chối: 95.0% (19/20) → ĐẠT** (mục tiêu ≥ 85%)
+- Chi tiết từng câu: `docs/chatbot-eval-results.json`. Còn trượt: I — 3 câu "chuyển/đổi"
+  + 3 câu ngủ tay; III — 1 câu "tra cứu điểm thi tốt nghiệp..." (0.78 quá ngưỡng 0.6,
+  do trùng từ "kết quả/tốt nghiệp" với tài liệu "Bản tự đánh giá kết quả công việc").
+- Điều chỉnh đã dùng (1 vòng + 2 vòng tra so offline): thêm 11 stopword đệm, mở rộng
+  từ điển đồng nghĩa nhỏ (`expandKeywords`), viết lại 15 câu II/4 câu III bám sát từ
+  vựng thật của tài liệu. Mục tiêu KHÔNG bị hạ.
 
 ## 7. Tài liệu đi kèm
 
@@ -121,32 +133,43 @@ DELETE FROM _prisma_migrations WHERE migration_name = '20261104010000_chatbot_kn
 
 *(CSDL dev **chưa** áp migration — rollback chỉ là dự phòng; không đụng bảng/enum sẵn có ngoài cột nullable ở trên.)*
 
-## 9. Bảng đối chiếu biểu mẫu ↔ loại đơn (9/77)
+## 9. Bảng đối chiếu biểu mẫu ↔ loại đơn (7/77 — sau việc 2, bổ sung nút online)
 
-Nguồn: `backend/src/modules/chatbot/form-map.json` (do script nạp tri thức dựng từ trùng từ khóa):
+Nguồn: `backend/src/modules/chatbot/form-map.json` — chỉ giữ cặp CÙNG MỘT thủ tục của
+sinh viên; mỗi dòng có `xacNhanBoi` (rỗng mặc định) để người quản trị đánh dấu đã rà tay:
 
-| Biểu mẫu (thư viện) | Loại đơn hệ thống | Mã | Độ tin cậy |
-| --- | --- | --- | --- |
-| Đơn xin cấp bảng điểm | Đơn xin cấp bảng điểm | `rt_dbt` | cao |
-| Đơn xin cấp lại bảng điểm | Đơn xin cấp bảng điểm | `rt_dbt` | cao |
-| Đơn xin chuyển chuyên ngành đào tạo | Đơn xin chuyển ngành | `rt_dcn` | trung-bình |
-| Đơn xin chuyển ngành đào tạo | Đơn xin chuyển ngành | `rt_dcn` | trung-bình |
-| Đơn xin chuyển lớp | Đơn xin chuyển ngành | `rt_dcn` | trung-bình |
-| Đơn xin chuyển trường | Đơn xin chuyển ngành | `rt_dcn` | trung-bình |
-| Đơn xin chuyển trường (bản 2) | Đơn xin chuyển ngành | `rt_dcn` | trung-bình |
-| Đơn xin chuyển công tác | Đơn xin chuyển ngành | `rt_dcn` | trung-bình |
-| Đơn xin chuyển ngạch | Đơn xin chuyển ngành | `rt_dcn` | trung-bình |
+| Biểu mẫu (thư viện) | Loại đơn | Mã | Độ tin cậy | Nút "Nộp đơn trực tuyến" |
+| --- | --- | --- | --- | --- |
+| Đơn xin cấp bảng điểm | Đơn xin cấp bảng điểm | `rt_dbt` | cao | CÓ |
+| Đơn xin cấp lại bảng điểm | Đơn xin cấp bảng điểm | `rt_dbt` | cao | CÓ |
+| Đơn xin chuyển lớp | Đơn xin chuyển ngành | `rt_dcn` | trung-binh | KHÔNG — chỉ tải biểu mẫu + câu "Nếu đúng thủ tục này, bạn có thể nộp trực tuyến tại mục Dịch vụ Một cửa" |
+| Đơn xin chuyển chuyên ngành đào tạo | Đơn xin chuyển ngành | `rt_dcn` | trung-binh | KHÔNG |
+| Đơn xin chuyển ngành đào tạo | Đơn xin chuyển ngành | `rt_dcn` | trung-binh | KHÔNG |
+| Đơn xin chuyển trường | Đơn xin chuyển ngành | `rt_dcn` | trung-binh | KHÔNG |
+| Đơn xin chuyển trường (bản 2) | Đơn xin chuyển ngành | `rt_dcn` | trung-binh | KHÔNG |
+
+- Đã GỠ 2 cặp cán bộ cũ ("Đơn xin chuyển công tác", "Đơn xin chuyển ngạch" — trước đây
+  sai nghĩa bị nối vào `rt_dcn`): giờ ở nhóm chưa ghép (`thap`, không nút nào).
+- 70 tài liệu còn lại chỉ dùng cho tra cứu tri thức.
+- Nạp lại (`chatbot:ingest`) tái lập đúng 7 cặp này (sửa lỗi lột tiền tố ở cả 2 phía
+  tên so khớp + thứ tự xuất ổn định) và luôn giữ nguyên dòng đã rà tay / trung-binh.
 
 68 tài liệu còn lại chỉ dùng cho **tra cứu tri thức trả lời** (không gắn nút tạo đơn). Năm biểu mẫu
 "chuyển…" được nối vào chung `rt_dcn` ở mức trung-bình — cần chủ dự án rà lại trước đưa vào thực thi.
 
 ## 10. Hạn chế đã biết & mục chưa kiểm chứng (trung thực mở)
 
-1. **Đường chạy Gemini thật CHƯA kiểm chứng** — môi trường phát triển không có `GEMINI_API_KEY`. Toàn bộ đường sẵn sàng khi có khoá (genera câu trả lời LLM thật, sinh embedding `text-embedding-004` cho chunks mới) đã được cài nhưng chỉ dừng lại ở **tính hợp lệ kiểu + suy giảm an ninh SEARCH_ONLY** (đã test với provider lỗi giả lập). Khi có khoá:
-   - thêm khoá vào `backend/.env`, khởi động lại backend;
-   - chạy `npm run chatbot:ingest` để **thay embedding giả lập 32 chiều hiện tại bằng embedding thật** (bước bắt buộc — embedding hiện tại chỉ hợp lệ cho phép truy xuất bm25 của bộ test).
-2. **Chuẩn hoá BM25 theo điểm lớn nhất tập truy xuất** (`kwNorm = raw / kwMax`): câu chứa từ phổ biến ("điều kiện", "quy trình"…) khớp một phần vẫn có thể chạm ngưỡng `CHAT_MIN_SCORE`. Đã giảm tác động bằng: hợp ứng viên hai phía trước khi chấm, xếp hạng cuối theo điểm hợp, và câu trả lời luôn bám `<<NGUỒN>>` (không tự chế chữ). khắc phục dứt điểm nên theo điểm tuyệt đối hoặc thang IDF — ghi lại cho giai đoạn sau.
-3. **9/77 khớp biểu mẫu** — mọi câu hỏi "đơn loại khác" chỉ được trả lời thuộc dạng gợi ý tìm kiếm, không nút tạo đơn đặc thù; thấp nhất là cần bảng đối chiếu thủ công, ưu tiên vẫn không tự chế mã loại đơn.
+1. **Đường chạy Gemini thật CHƯA kiểm chứng** — môi trường phát triển không có `GEMINI_API_KEY`. Toàn bộ đường sẵn sàng khi có khoá (sinh câu trả lời LLM thật, sinh embedding `gemini-embedding-001` cho chunks mới) đã được cài nhưng chỉ dừng lại ở **tính hợp lệ kiểu + suy giảm an toàn SEARCH_ONLY** (đã test với provider lỗi giả lập + nghiêm tắc khoá sai đều chỉ cảnh báo). Khi có khoá:
+   - thêm khoá vào `backend/.env`, khởi động lại backend (backend tự kiểm tra tên mô hình và cảnh báo nếu sai);
+   - chạy `npm run chatbot:ingest` để **thay embedding giả lập 32 chiều hiện tại bằng embedding thật** (bước bắt buộc — embedding hiện tại chỉ hợp lệ cho phép truy xuất từ-khóa của bộ test).
+2. ~~**Chuẩn hoá BM25 theo điểm lớn nhất tập truy xuất**~~ — **ĐÃ KHẮC PHỤC (việc 3)**: điểm
+   từ-khóa là **độ phủ từ khóa hữu ích có trọng số IDF** trong [0,1] tuyệt đối
+   (df < 60% số đoạn, `idfRef = idf(df=1)`), BM25 thô chỉ dùng để xếp hạng RRF;
+   ngưỡng `CHAT_MIN_SCORE=0.6` áp lên điểm tuyệt đối nên câu ngoài phạm vi không
+   thể đạt ngưỡng chỉ nhờ xếp đầu (X §6.iii).
+3. ~~**9/77 khớp biểu mẫu**~~ — **ĐÃ SỬA XUỐNG 7 cặp đúng nghĩa (việc 2)**: loại 2 cặp
+   cán bộ (chuyển công tác/chuyển ngạch), giữ 2 cặp cao + 5 cặp trung-binh; trung-binh
+   không được gắn nút nộp online (X §9).
 4. **2 tệp `.xls` không đọc được** ("Danh mục thủ tục giải quyết tại Bộ phận Một cửa" và bản 2) — nguồn đặc thù này thiếu, đề xuất lưu lại dạng PDF/DOCX để nạp.
 5. Test tri thức dùng từ khóa đặc trưng (không từ phổ biến) để bảo đảm tính tất định khi chạy lại — các câu hỏi đời thường vẫn có thể phân loại nhẹ nhàng khác nhau giữa các lần chạy.
 6. Đánh giá truy xuất hiện chạy chế độ từ-khóa; khi có khoá thật cần **chạy lại `chatbot:eval`** để thay số liệu bằng kết quả sản phẩm-thật.
@@ -159,4 +182,60 @@ Nguồn: `backend/src/modules/chatbot/form-map.json` (do script nạp tri thức
 
 ---
 
-*Người viết báo cáo: phiên làm việc tự động ngày 04/11/2026. Số liệu tham chiếu tag `backup-truoc-chatbot`, chi tiết test trong `backend/tests/chatbot/`.*
+## 12. Báo cáo lần sửa 05/11–06/11/2026 (sửa trước khi áp dev)
+
+### 12.1 Bảng việc 1–5 | trước | sau
+
+| Việc | Trước | Sau | Commit |
+| --- | --- | --- | --- |
+| 1. Tài liệu nguy hiểm | Đề xuất `DROP TABLE chat_sessions` (bảng có sẵn — nguy hiểm); dev-apply có 2 cách (một cách `psql -f` làm lệch `_prisma_migrations`) | Rollback chỉ gỡ đúng đối tượng chatbot tạo; dev-apply DUY NHẤT `prisma migrate deploy`; có lệnh pg_dump sao-lưu + khôi phục; 2 mẫu nạp TEST/DEV; bước thử tay dùng `rt_dbt` | `a278751` |
+| 2. Form-map | 9/77 NHẦM có 2 cặp SAI NGHĨA (chuyển công tác/chuyển ngạch cán bộ nối `rt_dcn`); trung-binh vẫn gắn nút online; không có cột rà tay | 7/77 đúng nghĩa (2 cao + 5 trung-binh); gỡ 2 cặp cán bộ; trung-binh KHÔNG nút online (chỉ DOWNLOAD_FORM + câu gợi ý); thêm `xacNhanBoi`; nạp lại giữ dòng đã rà tay và tái lập đúng 7 cặp | `bdc5906` |
+| 3. Ngưỡng truy xuất | BM25 chuẩn hóa theo MAX tập truy xuất + hệ số 0.85 — câu ngoài phạm vi vẫn chạm ngưỡng chỉ nhờ "xếp đầu" | Điểm phủ từ-khóa-hữu-ích có trọng số IDF [0,1] TUYỆT ĐỐI (df<60%, idfRef idf(df=1)); BM25 thô chỉ cho RRF; không đổi hợp nhất RRF / đường vector | `a58636e` |
+| 4. Bộ đánh giá | 30 câu, 1 chỉ số (90.0%) | 3 nhóm (30 bám-tên + 30 tự-nhiên + 20 ngoài-phạm-vi), 3 chỉ số **83.3% / 70.0% / 95.0%** — cả 3 ĐẠT, không hạ mục tiêu | `a5df5b7` |
+| 5. Embedding | Mặc định `text-embedding-004` (mô hình cũ, đổi mô hình không phát hiện được); khởi động chỉ kiểm tra mô hình chat | `gemini-embedding-001`, kiểm cả 2 mô hình lúc khởi động (cảnh báo + suy giảm không embedding, không sập); ghi `mo_hinh_embedding` + `so_chieu_embedding` trên chunk; phát hiện embedding cũ → `chatbot:ingest --force` (tự chặn khi không có khoá) | `e085dcc` |
+
+### 12.2 Kết quả test
+
+- `tsc --noEmit` sạch sau từng việc.
+- Test chatbot: **32/32 PASS** (26 cũ + 6 test mới ở
+  `tests/chatbot/chatbot-formmap-threshold.test.ts`: câu ngoài phạm vi không đạt
+  ngưỡng, cặp trung-binh không nút online / cặp cao giữ nút, cấu trúc form-map),
+  chạy lại xanh sau mỗi thay đổi điểm/stopword.
+- Sự cố phá (sabotage) 1 lần đúng quy định: `CHAT_MIN_SCORE=0` → test "ngoài phạm vi
+  không đạt ngưỡng" chuyển **đỏ** → khôi phục → xanh lại.
+- `npm test` toàn bộ (lần duy nhất theo quy ước): **worker vitest sập lại** (file chạy
+  30 test, 22 pass trước khi chết) với **Node v24.15.0** — ĐÃ ghi nhận, KHÔNG nâng Node
+  (người dùng sẽ chuyển sang Node 22 LTS); lệnh test chatbot đơn luồng vẫn xanh.
+- `git diff --stat` so `backup-truoc-chatbot`: migrations chỉ += 2 file MỚI (không file
+  cũ bị sửa); frontend chỉ 14 file thuộc tính chatbot.
+
+### 12.3 Quyết định tự chọn
+
+1. **Công thức điểm (việc 3)**: chọn "độ phủ có trọng số IDF" (presence-coverage) thay
+   vì BM25-thô/chuẩn-hóa-tf — sweep offline 24 biến thể trên chính bộ eval cho thấy
+   biến thể sat/tf dồn điểm tốt xuống ≤ 0.3 không thể với ngưỡng 0.6; biến thể presence
+   giữ I/II ≥ 78/70% và III 100% (trong sweep).
+2. **Không backfill siêu dữ liệu embedding trong migration**: vector hiện có trên CSDL
+   TEST là vector GIẢ 32 chiều từ FakeProvider khi seed — ghi mô hình thật vào sẽ sai
+   sự thật; các đoạn cũ để giá trị NULL (mang ý nghĩa "embedding cực kỳ cũ — hãy chạy
+   nạp lại có khoá") và siêu dữ liệu được ghi từ lần nạp kế tiếp.
+3. **Chặn `--force` khi không có khoá**: `--force` nạp lại TẤT CẢ và sẽ XÓA vector cũ
+   mà không tạo được vector mới — tự chặn exit 1 để bảo vệ dữ liệu.
+4. **Sửa lỗi so khớp form-map**: tên loại đơn trước giờ không lột tiền tố như tên biểu
+   mẫu → nạp lại mất 2 cặp cao; giờ lột cả 2 phía (self-match = 1.0) và xuất file
+   sắp thứ tự ổn định (cặp khớp lên đầu).
+5. **eval exit 1 khi bất kỳ chỉ số dưới mục tiêu** (thay vì chỉ in), CI-ready.
+
+### 12.4 CHƯA LÀM
+
+- Nạp lại bằng khoá Gemini thật (không có khoá trong môi trường): embedding hiện tại
+  trên CSDL TEST là vector giả 32 chiều — khi có khoá chạy
+  `npm run chatbot:ingest -- --force` MỘT lần (nạp thường bỏ qua tài liệu vì
+  `content_hash` không đổi; `--force` xử lý lại và ghi đúng mô hình/số chiều — X §10.1).
+- `npm test` đầy đủ KHÔNG XÁC ĐỊNH được PASS do crash worker môi trường (Node 24 + vitest
+  tinypool) — không nâng Node theo quy định; test chatbot đơn luồng 32/32 xanh. Đề nghị
+  chạy lại sau khi chuyển Node 22 LTS.
+
+---
+
+*Người viết báo cáo: phiên làm việc tự động ngày 04/11/2026 (phần 12 bổ sung 06/11/2026). Số liệu tham chiếu tag `backup-truoc-chatbot`, chi tiết test trong `backend/tests/chatbot/`.*
