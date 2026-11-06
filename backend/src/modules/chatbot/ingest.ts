@@ -18,7 +18,9 @@ import * as path from 'node:path'
 import { prisma } from '../../lib/prisma'
 import { normalizeText } from './vietnamese'
 
-const PUBLIC_ROOT = path.resolve(process.cwd(), '..', 'frontend', 'public')
+const PUBLIC_ROOT = fs.existsSync(path.resolve(process.cwd(), '..', 'frontend', 'public'))
+  ? path.resolve(process.cwd(), '..', 'frontend', 'public')
+  : path.resolve(process.cwd(), 'frontend', 'public')
 
 /** Url '/tai-lieu/...' → đường dẫn tệp tuyệt đối, hoặc null khi không hợp lệ. */
 export function libraryUrlToPath(url: string, publicRoot: string = PUBLIC_ROOT): string | null {
@@ -59,11 +61,28 @@ export async function extractTextFromFile(absPath: string, loaiTep: string): Pro
       const doc = await extractor.extract(absPath)
       return { text: doc.getBody() ?? '' }
     }
+    if (loaiTep === 'xls' || loaiTep === 'xlsx' || /\.(xlsx?)$/i.test(absPath)) {
+      const xlsxModule = await import('xlsx')
+      const xlsx = (xlsxModule as unknown as { default?: typeof xlsxModule }).default ?? xlsxModule
+      const wb = xlsx.readFile(absPath)
+      const sheetTexts: string[] = []
+      for (const sheetName of wb.SheetNames) {
+        const sheet = wb.Sheets[sheetName]
+        if (sheet) {
+          const csv = xlsx.utils.sheet_to_csv(sheet)
+          if (csv && csv.trim()) {
+            sheetTexts.push(`[Bảng: ${sheetName}]\n${csv.trim()}`)
+          }
+        }
+      }
+      return { text: sheetTexts.join('\n\n') }
+    }
     if (loaiTep === 'txt' || loaiTep === 'md' || /\.(txt|md)$/i.test(absPath)) {
       return { text: fs.readFileSync(absPath, 'utf8') }
     }
     return null
-  } catch {
+  } catch (err) {
+    process.stderr.write(`[chatbot] Lỗi trích xuất tệp ${absPath} (${loaiTep}): ${(err as Error).message}\n`)
     return null
   }
 }
@@ -374,8 +393,6 @@ export async function ingestLibraryDocuments(opts: {
       `Mô tả: ${lib.moTa || '(không có mô tả)'}.`,
       `Định dạng tải về: ${lib.loaiTep.toUpperCase()}. Đường dẫn tải: ${lib.url}.`,
     ].join('\n')
-    const hash = sha256(cardText)
-
     const abs = libraryUrlToPath(lib.url)
     let fileText = ''
     let pages: number | undefined
@@ -391,13 +408,14 @@ export async function ingestLibraryDocuments(opts: {
       progress.unreadable.push(`${lib.ten} (url không hợp lệ: ${lib.url})`)
     }
 
+    const fullText = `${cardText}\n\n${fileText}`.trim()
+    const hash = sha256(fullText)
+
     const existing = await prisma.knowledgeDocument.findUnique({ where: { ma: docCode } })
     if (existing && existing.contentHash === hash && existing.status === 'READY' && !existing.deletedAt && !opts.force) {
       progress.skipped += 1
       continue
     }
-
-    const fullText = `${cardText}\n\n${fileText}`.trim()
     const doc = await prisma.knowledgeDocument.upsert({
       where: { ma: docCode },
       create: {

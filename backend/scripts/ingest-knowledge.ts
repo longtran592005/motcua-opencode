@@ -15,9 +15,12 @@ import { ingestLibraryDocuments } from '../src/modules/chatbot/ingest'
 
 async function main(): Promise<void> {
   const force = process.argv.includes('--force')
+  const noEmbed = process.argv.includes('--no-embed') || process.argv.includes('--skip-embed')
   const provider = getLlmProvider()
-  const embedder = provider.available() ? provider : null
-  if (embedder) {
+  const embedder = !noEmbed && provider.available() ? provider : null
+  if (noEmbed) {
+    process.stdout.write('[chatbot] CỜ --no-embed: chạy chế độ từ-khóa (bỏ qua embedding, tuyệt đối KHÔNG gọi API LLM)\n')
+  } else if (embedder) {
     process.stdout.write(
       `[chatbot] Có khoá LLM — tạo embedding bằng ${embedder.name}/${(embedder as { embedModel?: string }).embedModel ?? embedder.model}\n`,
     )
