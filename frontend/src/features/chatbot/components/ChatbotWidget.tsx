@@ -1,9 +1,19 @@
 import * as React from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bot, MessageSquare, RotateCcw, Send, X } from 'lucide-react'
+import {
+  Bell,
+  Bot,
+  Clock,
+  HelpCircle,
+  MessageSquare,
+  RotateCcw,
+  Send,
+  Sparkles,
+  X,
+  ChevronRight,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { ChatMessageBubble } from './ChatMessageBubble'
 import { useChat } from '../hooks/useChat'
 
@@ -15,11 +25,14 @@ export function ChatbotWidget() {
   const bottomRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
-    if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (open) {
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    }
   }, [messages, open])
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    if (!cauHoi.trim() || dangGui) return
     void gui(cauHoi)
     setCauHoi('')
   }
@@ -29,134 +42,183 @@ export function ChatbotWidget() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            transition={{ duration: 0.18 }}
-            className="fixed bottom-24 right-4 z-50 flex h-[32rem] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border bg-background shadow-xl sm:right-6"
+            exit={{ opacity: 0, y: 16, scale: 0.96 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 320 }}
+            className="fixed bottom-4 right-3 sm:bottom-6 sm:right-6 z-50 flex h-[min(34rem,calc(100vh-4rem))] max-h-[540px] w-[min(26rem,calc(100vw-1.5rem))] sm:w-[410px] flex-col overflow-hidden rounded-2xl border border-border/80 bg-background shadow-2xl"
             role="dialog"
-            aria-label="Trợ lý ảo hỏi đáp thủ tục"
+            aria-label="Trợ lý ảo hỏi đáp thủ tục Một cửa"
           >
-            <div className="flex items-center gap-3 bg-topbar px-4 py-3 text-topbar-foreground">
-              <span className="flex size-9 items-center justify-center rounded-full bg-white/15">
+            {/* Header */}
+            <div className="flex items-center gap-2.5 bg-gradient-to-r from-primary via-primary/95 to-brand-dark px-3.5 py-3 text-primary-foreground shadow-xs shrink-0">
+              <div className="relative flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-xs shadow-2xs">
                 <Bot className="size-5" aria-hidden="true" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold">Trợ lý ảo Một cửa</p>
-                <p className="truncate text-xs text-hero-muted">Hỏi đáp về thủ tục hành chính</p>
+                <span className="absolute -bottom-0.5 -right-0.5 flex size-2 items-center justify-center">
+                  <span className="relative inline-flex size-2 rounded-full bg-emerald-400 border border-white" />
+                </span>
               </div>
-              {messages.length > 0 && (
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-xs sm:text-sm font-bold tracking-tight truncate">Trợ lý ảo Một cửa</h2>
+                  <span className="rounded-full bg-white/20 px-1.5 py-0.2 text-[9px] font-semibold uppercase text-white shrink-0">
+                    AI
+                  </span>
+                </div>
+                <p className="truncate text-[11px] text-white/80">Hỏi đáp & biểu mẫu trực tuyến TBU</p>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                {messages.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7.5 rounded-lg text-white/90 hover:bg-white/20 hover:text-white transition-colors"
+                    onClick={lamMoi}
+                    title="Bắt đầu hội thoại mới"
+                    aria-label="Bắt đầu cuộc trò chuyện mới"
+                  >
+                    <RotateCcw className="size-3.5" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-topbar-foreground hover:bg-white/15 hover:text-topbar-foreground"
-                  onClick={lamMoi}
-                  aria-label="Bắt đầu cuộc trò chuyện mới"
+                  className="size-7.5 rounded-lg text-white/90 hover:bg-white/20 hover:text-white transition-colors"
+                  onClick={() => setOpen(false)}
+                  title="Đóng trợ lý ảo"
+                  aria-label="Đóng trợ lý ảo"
                 >
-                  <RotateCcw className="size-4" />
+                  <X className="size-4" />
                 </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-topbar-foreground hover:bg-white/15 hover:text-topbar-foreground"
-                onClick={() => setOpen(false)}
-                aria-label="Đóng trợ lý ảo"
-              >
-                <X className="size-4" />
-              </Button>
+              </div>
             </div>
 
-            <ScrollArea className="flex-1 bg-surface">
-              <div className="space-y-4 p-4">
-                {messages.length === 0 ? (
-                  <div className="space-y-4">
-                    <div className="rounded-xl border bg-card p-3">
-                      <p className="text-sm font-semibold">Xin chào!</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Tôi có thể giúp bạn tìm hiểu về thủ tục, hồ sơ cần chuẩn bị và thời gian xử
-                        lý. Hãy chọn một câu hỏi gợi ý hoặc nhập câu hỏi của bạn.
+            {/* Scrollable Chat Area (Không dùng Radix display:table để tránh lỗi tràn ngang) */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 space-y-3.5 bg-surface/30">
+              {messages.length === 0 ? (
+                <div className="space-y-3 pt-1">
+                  {/* Welcome Card */}
+                  <div className="rounded-2xl border border-border/70 bg-card p-3.5 shadow-2xs">
+                    <div className="flex items-center gap-1.5 text-primary font-semibold text-xs">
+                      <Sparkles className="size-3.5 shrink-0" />
+                      <span>Xin chào bạn! 👋</span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                      Tôi là Trợ lý ảo Bộ phận Một cửa. Tôi có thể giải đáp thủ tục hành chính,
+                      hướng dẫn chuẩn bị hồ sơ và hỗ trợ tải hoặc nộp biểu mẫu.
+                    </p>
+                  </div>
+
+                  {/* Suggestions Section */}
+                  {suggestions.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <HelpCircle className="size-3 text-primary shrink-0" />
+                        <span>Gợi ý câu hỏi</span>
+                      </p>
+                      <div className="space-y-1.5">
+                        {suggestions.map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => void gui(item)}
+                            className="group flex w-full min-w-0 items-center justify-between rounded-xl border border-border/70 bg-card px-3 py-2 text-left text-xs text-foreground shadow-2xs transition-all hover:border-primary/60 hover:bg-primary/5 hover:text-primary active:scale-[0.99]"
+                          >
+                            <span className="truncate pr-1">{item}</span>
+                            <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {messages.map((message) => (
+                    <ChatMessageBubble
+                      key={message.id}
+                      message={message}
+                      onDanhGia={danhGia}
+                      onTaoBanNhap={taoBanNhap}
+                      onGuiCanBo={() => void guiCanBo()?.then(() => undefined)}
+                    />
+                  ))}
+
+                  {/* Pending Tickets sent to staff */}
+                  {daGuiCauHoi.length > 0 && (
+                    <div className="w-full min-w-0 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs shadow-2xs">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-400 text-xs">
+                          <Clock className="size-3.5 shrink-0" />
+                          <span>Yêu cầu đang chờ cán bộ phản hồi</span>
+                        </span>
+                        <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                          {daGuiCauHoi.length}
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {daGuiCauHoi.slice(0, 3).map((item) => (
+                          <div
+                            key={item.ma}
+                            className="rounded-lg bg-background/90 p-2 border border-amber-500/20"
+                          >
+                            <span className="font-mono font-bold text-primary text-[11px]">{item.ma}</span>
+                            <p className="mt-0.5 text-foreground line-clamp-2 text-xs">{item.cauHoi}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <Bell className="size-3 text-primary shrink-0" />
+                        <span className="truncate">Cán bộ sẽ phản hồi qua chuông thông báo.</span>
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {suggestions.map((item) => (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => void gui(item)}
-                          className="rounded-full border bg-background px-3 py-1.5 text-left text-xs font-medium transition-colors hover:border-primary hover:text-primary"
-                        >
-                          {item}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {messages.map((message) => (
-                      <ChatMessageBubble
-                        key={message.id}
-                        message={message}
-                        onDanhGia={danhGia}
-                        onTaoBanNhap={taoBanNhap}
-                        onGuiCanBo={() => void guiCanBo()?.then(() => undefined)}
-                      />
-                    ))}
-                    {daGuiCauHoi.length > 0 && (
-                      <div className="rounded-lg border bg-card p-2 text-xs">
-                        <p className="mb-1 font-bold uppercase tracking-wide text-muted-foreground">
-                          Câu hỏi đã gửi cho cán bộ
-                        </p>
-                        <ul className="space-y-1">
-                          {daGuiCauHoi.slice(0, 5).map((item) => (
-                            <li key={item.ma}>
-                              <span className="font-medium">{item.ma}</span> — {item.cauHoi.slice(0, 80)}
-                            </li>
-                          ))}
-                        </ul>
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          Câu trả lời cán bộ sẽ xuất hiện tại chuông thông báo.
-                        </p>
-                      </div>
-                    )}
-                  </>
-                )}
-                <div ref={bottomRef} />
-              </div>
-            </ScrollArea>
+                  )}
+                </>
+              )}
+              <div ref={bottomRef} />
+            </div>
 
-            <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t bg-background p-3">
-              <Input
-                value={cauHoi}
-                onChange={(e) => setCauHoi(e.target.value)}
-                placeholder="Nhập câu hỏi của bạn…"
-                aria-label="Nhập câu hỏi cho trợ lý ảo"
-                disabled={dangGui}
-              />
-              <Button
-                type="submit"
-                size="icon"
-                disabled={dangGui || !cauHoi.trim()}
-                aria-label="Gửi câu hỏi"
-              >
-                <Send className="size-4" />
-              </Button>
-            </form>
-            <p className="border-t bg-background px-3 py-1.5 text-center text-[10px] text-muted-foreground">
-              Trợ lý AI có thể nhầm lẫn, hãy xác nhận thông tin quan trọng với Phòng Đào tạo.
-            </p>
+            {/* Input & Footer Container */}
+            <div className="border-t border-border/80 bg-background p-2.5 sm:p-3 shrink-0">
+              <form onSubmit={handleSubmit} className="relative flex w-full min-w-0 items-center">
+                <Input
+                  value={cauHoi}
+                  onChange={(e) => setCauHoi(e.target.value)}
+                  placeholder="Hỏi về thủ tục, biểu mẫu, học phí…"
+                  aria-label="Nhập câu hỏi cho trợ lý ảo"
+                  disabled={dangGui}
+                  className="h-9.5 w-full rounded-xl border-input/80 bg-muted/40 pr-10 text-xs transition-all placeholder:text-muted-foreground focus-visible:bg-background focus-visible:ring-primary/20"
+                />
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={dangGui || !cauHoi.trim()}
+                  aria-label="Gửi câu hỏi"
+                  className="absolute right-1 size-7.5 rounded-lg shadow-2xs transition-transform active:scale-95"
+                >
+                  <Send className="size-3.5" />
+                </Button>
+              </form>
+              <p className="mt-1.5 text-center text-[10.5px] text-muted-foreground">
+                Trợ lý AI Một cửa • Đối chiếu quy định chính thức của TBU
+              </p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <Button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-6 right-4 z-50 size-14 rounded-full shadow-lg sm:right-6"
-        aria-label={open ? 'Đóng trợ lý ảo' : 'Mở trợ lý ảo'}
-      >
-        {open ? <X className="size-6" /> : <MessageSquare className="size-6" />}
-      </Button>
+      {/* Floating Action Button (FAB) - Chỉ hiện khi widget đóng để không bị thừa nút hoặc đè giao diện */}
+      {!open && (
+        <Button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-50 size-13 rounded-full shadow-xl transition-all duration-200 hover:scale-105 active:scale-95"
+          aria-label="Mở trợ lý ảo"
+        >
+          <MessageSquare className="size-5.5" />
+        </Button>
+      )}
     </>
   )
 }

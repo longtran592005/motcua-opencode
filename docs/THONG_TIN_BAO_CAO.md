@@ -835,3 +835,4 @@ Hệ thống tích hợp công cụ tự động `scripts/check-integrity.ts` ki
 2. **Xử lý số lượng thao tác OpenAPI:** Ghi nhận thực tế 125 thao tác hiện hành trong `docs/openapi.yaml` và giải thích rõ nguyên nhân tăng từ mốc 112 ban đầu do bổ sung các API nghiệp vụ Chatbot AI.
 3. **Độ tương phản giao diện:** Sử dụng số liệu đo đạc thực tế từ script `check-contrast.mjs` với 19/21 cặp màu Light Mode và 20/23 cặp màu Dark Mode đạt chuẩn WCAG AA.
 4. **An toàn bảo mật:** Loại bỏ hoàn toàn các chuỗi bí mật, token thật, mật khẩu hay email cá nhân thật ra khỏi nội dung báo cáo; chỉ trích dẫn tên biến môi trường và tài khoản demo theo đúng quy chế an toàn.
+

@@ -1,4 +1,7 @@
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001 > $null
 
 docker compose up -d postgres
 do {
@@ -18,7 +21,7 @@ try {
 }
 
 $root = Split-Path $PSScriptRoot -Parent
-Start-Process powershell -ArgumentList '-NoExit', '-Command', "Set-Location '$root\backend'; npm run dev"
-Start-Process powershell -ArgumentList '-NoExit', '-Command', "Set-Location '$root\frontend'; npm run dev -- --host 0.0.0.0"
+Start-Process powershell -ArgumentList '-NoExit', '-Command', "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; `$OutputEncoding = [System.Text.Encoding]::UTF8; chcp 65001 > `$null; Set-Location '$root\backend'; npm run dev"
+Start-Process powershell -ArgumentList '-NoExit', '-Command', "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; `$OutputEncoding = [System.Text.Encoding]::UTF8; chcp 65001 > `$null; Set-Location '$root\frontend'; npm run dev -- --host 0.0.0.0"
 Write-Host 'Backend: http://localhost:8080'
 Write-Host 'Frontend: http://localhost:5173'

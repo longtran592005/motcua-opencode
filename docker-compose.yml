@@ -39,11 +39,9 @@ services:
       POSTGRES_DB: motcua
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
       TZ: Asia/Ho_Chi_Minh
-    # ports:
-    #   # Ánh xạ 5433 trên máy chủ vào 5432 của container (tránh trùng PostgreSQL cục bộ)
-    #   - "5433:5432"
     ports:
-      - "127.0.0.1:5435:5432"
+      # Ánh xạ 5433 trên máy chủ vào 5432 của container (tránh trùng PostgreSQL cục bộ)
+      - "5433:5432"
     volumes:
       - motcua_pgdata:/var/lib/postgresql/data
     healthcheck:
