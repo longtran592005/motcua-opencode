@@ -1,610 +1,1360 @@
 {
-  "thoiGian": "2026-11-04T08:59:03.216Z",
-  "soCauHoi": 30,
-  "dungTop3": 27,
-  "tyLe": 0.9,
-  "tiêuChi": 0.8,
-  "dat": true,
-  "chiTiet": [
-    {
-      "stt": 1,
-      "cauHoi": "Em xin cấp bảng điểm thì nộp đơn gì?",
-      "taiLieu": "Đơn xin cấp bảng điểm",
-      "top": [
-        [
-          "Đơn xin cấp lại bảng điểm",
-          0.85
+  "thoiGian": "2026-11-05T05:17:40.622Z",
+  "minScore": 0.6,
+  "bamTen": {
+    "soCau": 30,
+    "dungTop3": 25,
+    "tyLe": 0.8333,
+    "mucTieu": 0.8,
+    "dat": true,
+    "chiTiet": [
+      {
+        "stt": 1,
+        "cauHoi": "Em xin cấp bảng điểm thì nộp đơn gì?",
+        "taiLieu": "Đơn xin cấp bảng điểm",
+        "top": [
+          [
+            "Quy trình bổ nhiệm cán bộ quản lý thuộc thẩm quyền Hiệu trưởng",
+            1
+          ],
+          [
+            "Đơn xin cấp lại bảng điểm",
+            0.5513
+          ],
+          [
+            "Đơn xin cấp bảng điểm",
+            0.5513
+          ]
         ],
-        [
-          "Đơn xin cấp bảng điểm",
-          0.8324
+        "haiTop3": true
+      },
+      {
+        "stt": 2,
+        "cauHoi": "Làm thế nào để xin cấp lại bảng điểm đã bị mất?",
+        "taiLieu": "Đơn xin cấp lại bảng điểm",
+        "top": [
+          [
+            "Đơn xin cấp lại bảng điểm",
+            1
+          ],
+          [
+            "Đơn xin cấp lại bảng điểm",
+            0.6586
+          ],
+          [
+            "Đơn xin cấp bảng điểm",
+            0.6586
+          ]
         ],
-        [
-          "Quy trình bổ nhiệm cán bộ quản lý thuộc thẩm quyền Hiệu trưởng",
-          0.728
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 2,
-      "cauHoi": "Làm thế nào để xin cấp lại bảng điểm đã bị mất?",
-      "taiLieu": "Đơn xin cấp lại bảng điểm",
-      "top": [
-        [
-          "Đơn xin cấp lại bảng điểm",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 3,
+        "cauHoi": "Thủ tục xin bản sao bằng tốt nghiệp?",
+        "taiLieu": "Đơn xin cấp bản sao bằng tốt nghiệp",
+        "top": [
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Kế hoạch Tài chính",
+            1
+          ],
+          [
+            "Đơn xin cấp bản sao bằng tốt nghiệp",
+            0.7179
+          ],
+          [
+            "Đơn xin cấp bản sao bằng tốt nghiệp",
+            0.7179
+          ]
         ],
-        [
-          "Đơn xin cấp lại bảng điểm",
-          0.5505
+        "haiTop3": true
+      },
+      {
+        "stt": 4,
+        "cauHoi": "Em cần chứng nhận tốt nghiệp tạm thời thì làm sao?",
+        "taiLieu": "Đơn xin cấp chứng nhận tốt nghiệp tạm thời",
+        "top": [
+          [
+            "Đơn xin cấp chứng nhận tốt nghiệp tạm thời",
+            0.8489
+          ],
+          [
+            "Đơn xin cấp chứng nhận tốt nghiệp tạm thời",
+            0.8489
+          ],
+          [
+            "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
+            0.6593
+          ]
         ],
-        [
-          "Đơn xin cấp bảng điểm",
-          0.504
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 3,
-      "cauHoi": "Thủ tục xin bản sao bằng tốt nghiệp?",
-      "taiLieu": "Đơn xin cấp bản sao bằng tốt nghiệp",
-      "top": [
-        [
-          "Đơn xin cấp bản sao bằng tốt nghiệp",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 5,
+        "cauHoi": "Chứng nhận hoàn tất chương trình đào tạo xin ở đâu?",
+        "taiLieu": "Đơn xin cấp chứng nhận hoàn thành chương trình đào tạo",
+        "top": [
+          [
+            "Đơn xin cấp chứng nhận hoàn thành chương trình đào tạo",
+            0.822
+          ],
+          [
+            "Đơn xin cấp chứng nhận hoàn thành chương trình đào tạo",
+            0.822
+          ],
+          [
+            "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
+            0.822
+          ]
         ],
-        [
-          "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Kế hoạch Tài chính",
-          0.7881
+        "haiTop3": true
+      },
+      {
+        "stt": 6,
+        "cauHoi": "Nộp đơn xét tốt nghiệp như thế nào?",
+        "taiLieu": "Đơn đề nghị xét tốt nghiệp",
+        "top": [
+          [
+            "Đơn đề nghị xét tốt nghiệp",
+            1
+          ],
+          [
+            "Đơn đề nghị xét tốt nghiệp (quá hạn tốt nghiệp)",
+            0.6725
+          ],
+          [
+            "Đơn đề nghị xét tốt nghiệp (quá hạn tốt nghiệp)",
+            0.6725
+          ]
         ],
-        [
-          "Đơn xin cấp bản sao bằng tốt nghiệp",
-          0.7148
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 4,
-      "cauHoi": "Em cần chứng nhận tốt nghiệp tạm thời thì làm sao?",
-      "taiLieu": "Đơn xin cấp chứng nhận tốt nghiệp tạm thời",
-      "top": [
-        [
-          "Đơn xin cấp chứng nhận tốt nghiệp tạm thời",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 7,
+        "cauHoi": "Tốt nghiệp quá hạn thì nộp đơn gì?",
+        "taiLieu": "Đơn đề nghị xét tốt nghiệp (quá hạn tốt nghiệp)",
+        "top": [
+          [
+            "Đơn xin xét nâng bậc lương trước thời hạn",
+            0.6788
+          ],
+          [
+            "Đơn đề nghị xét tốt nghiệp (quá hạn tốt nghiệp)",
+            0.6158
+          ],
+          [
+            "Đơn đề nghị xét tốt nghiệp",
+            0.5865
+          ]
         ],
-        [
-          "Đơn xin cấp chứng nhận tốt nghiệp tạm thời",
-          0.8275
+        "haiTop3": true
+      },
+      {
+        "stt": 8,
+        "cauHoi": "Em rớt môn muốn học lại và học cải thiện học phần, làm sao?",
+        "taiLieu": "Đơn đăng ký học lại, học cải thiện học phần",
+        "top": [
+          [
+            "Đơn đăng ký học lại, học cải thiện học phần",
+            0.5768
+          ],
+          [
+            "Đơn đăng ký học lại, học cải thiện học phần",
+            0.5768
+          ],
+          [
+            "Đơn đăng ký học lại, học cải thiện học phần",
+            0.5768
+          ]
         ],
-        [
-          "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
-          0.4452
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 5,
-      "cauHoi": "Chứng nhận hoàn tất chương trình đào tạo xin ở đâu?",
-      "taiLieu": "Đơn xin cấp chứng nhận hoàn thành chương trình đào tạo",
-      "top": [
-        [
-          "Đơn xin cấp chứng nhận hoàn thành chương trình đào tạo",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 9,
+        "cauHoi": "Hoàn cảnh khó thì xin giảm học phí thế nào?",
+        "taiLieu": "Đơn đề nghị miễn, giảm học phí",
+        "top": [
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Kế hoạch Tài chính",
+            0.4387
+          ],
+          [
+            "Bản cam kết thực hiện nghĩa vụ của người được cử đi đào tạo",
+            0.358
+          ],
+          [
+            "Đơn đề nghị miễn, giảm học phí",
+            0.2504
+          ]
         ],
-        [
-          "Đơn xin cấp chứng nhận hoàn thành chương trình đào tạo",
-          0.8052
+        "haiTop3": true
+      },
+      {
+        "stt": 10,
+        "cauHoi": "Em muốn chuyển ngành đào tạo thì thủ tục ra sao?",
+        "taiLieu": "Đơn xin chuyển ngành đào tạo",
+        "top": [
+          [
+            "Đơn xin chuyển trường",
+            0.824
+          ],
+          [
+            "Đơn xin chuyển trường (bản 2)",
+            0.824
+          ],
+          [
+            "Đơn xin chuyển chuyên ngành đào tạo",
+            0.5336
+          ]
         ],
-        [
-          "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
-          0.4972
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 6,
-      "cauHoi": "Nộp đơn xét tốt nghiệp như thế nào?",
-      "taiLieu": "Đơn đề nghị xét tốt nghiệp",
-      "top": [
-        [
-          "Đơn đề nghị xét tốt nghiệp",
-          0.85
+        "haiTop3": false
+      },
+      {
+        "stt": 11,
+        "cauHoi": "Chuyển khoa (đổi chuyên ngành đào tạo) làm sao?",
+        "taiLieu": "Đơn xin chuyển chuyên ngành đào tạo",
+        "top": [
+          [
+            "Đơn xin chuyển chuyên ngành đào tạo",
+            0.851
+          ],
+          [
+            "Đơn xin chuyển ngành đào tạo",
+            0.851
+          ],
+          [
+            "Đơn xin chuyển lớp",
+            0.851
+          ]
         ],
-        [
-          "Đơn đề nghị xét tốt nghiệp (quá hạn tốt nghiệp)",
-          0.769
+        "haiTop3": true
+      },
+      {
+        "stt": 12,
+        "cauHoi": "Chuyển chính quy sang liên thông, tức là chuyển hình thức đào tạo, làm sao?",
+        "taiLieu": "Đơn xin chuyển hình thức đào tạo",
+        "top": [
+          [
+            "Giới thiệu hệ thống hỗ trợ Bộ phận Một cửa",
+            0.7607
+          ],
+          [
+            "Đơn xin chuyển hình thức đào tạo",
+            0.6851
+          ],
+          [
+            "Quy trình giải quyết cho thôi việc theo nguyện vọng cá nhân",
+            0.6301
+          ]
         ],
-        [
-          "Đơn đề nghị xét tốt nghiệp (quá hạn tốt nghiệp)",
-          0.6767
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 7,
-      "cauHoi": "Tốt nghiệp quá hạn thì nộp đơn gì?",
-      "taiLieu": "Đơn đề nghị xét tốt nghiệp (quá hạn tốt nghiệp)",
-      "top": [
-        [
-          "Đơn đề nghị xét tốt nghiệp (quá hạn tốt nghiệp)",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 13,
+        "cauHoi": "Em muốn học ở cơ sở khác, nộp đơn chuyển cơ sở đào tạo kiểu gì?",
+        "taiLieu": "Đơn xin chuyển cơ sở đào tạo",
+        "top": [
+          [
+            "Đơn đề nghị xét tốt nghiệp",
+            0.4265
+          ],
+          [
+            "Đơn xin chuyển cơ sở đào tạo",
+            0.4237
+          ],
+          [
+            "Đơn xin chuyển ngành đào tạo",
+            0.4237
+          ]
         ],
-        [
-          "Đơn xin xét nâng bậc lương trước thời hạn",
-          0.6287
+        "haiTop3": true
+      },
+      {
+        "stt": 14,
+        "cauHoi": "Xin chuyển lớp vì hợp thời khóa biểu khác?",
+        "taiLieu": "Đơn xin chuyển lớp",
+        "top": [
+          [
+            "Đơn xin chuyển ngành đào tạo",
+            0.7616
+          ],
+          [
+            "Đơn đề nghị hưởng phụ cấp đứng lớp cho giảng viên",
+            0.6963
+          ],
+          [
+            "Đơn xin chuyển lớp",
+            0.5347
+          ]
         ],
-        [
-          "Đơn đề nghị xét tốt nghiệp",
-          0.6255
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 8,
-      "cauHoi": "Em rớt môn muốn học lại và học cải thiện học phần, làm sao?",
-      "taiLieu": "Đơn đăng ký học lại, học cải thiện học phần",
-      "top": [
-        [
-          "Đơn đăng ký học lại, học cải thiện học phần",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 15,
+        "cauHoi": "Học song song hai chương trình cùng lúc được phép không?",
+        "taiLieu": "Đơn đăng ký học cùng lúc hai chương trình",
+        "top": [
+          [
+            "Đơn đăng ký học cùng lúc hai chương trình",
+            1
+          ],
+          [
+            "Đơn đăng ký học cùng lúc hai chương trình",
+            0.6763
+          ],
+          [
+            "Đơn xin nghỉ phép (bản 2)",
+            0.2848
+          ]
         ],
-        [
-          "Đơn đăng ký học lại, học cải thiện học phần",
-          0.7894
+        "haiTop3": true
+      },
+      {
+        "stt": 16,
+        "cauHoi": "Vì ốm em cần xin tạm nghỉ học thì làm gì?",
+        "taiLieu": "Đơn xin nghỉ học tạm thời",
+        "top": [
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.7113
+          ],
+          [
+            "Đơn xin nghỉ ốm, thai sản",
+            0.6583
+          ],
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.6114
+          ]
         ],
-        [
-          "Đơn đăng ký học lại, học cải thiện học phần",
-          0.671
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 9,
-      "cauHoi": "Hoàn cảnh khó thì xin giảm học phí thế nào?",
-      "taiLieu": "Đơn đề nghị miễn, giảm học phí",
-      "top": [
-        [
-          "Bản cam kết thực hiện nghĩa vụ của người được cử đi đào tạo",
-          0.85
+        "haiTop3": false
+      },
+      {
+        "stt": 17,
+        "cauHoi": "Em muốn thôi học, thủ tục hồ sơ ra sao?",
+        "taiLieu": "Đơn xin thôi học",
+        "top": [
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Văn phòng",
+            1
+          ],
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Khoa học Công nghệ và HTPT",
+            1
+          ],
+          [
+            "Quy trình nâng bậc lương trước thời hạn",
+            1
+          ]
         ],
-        [
-          "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Kế hoạch Tài chính",
-          0.8458
+        "haiTop3": false
+      },
+      {
+        "stt": 18,
+        "cauHoi": "Nghỉ học tạm thời xong muốn đi học trở lại thì nộp đơn gì?",
+        "taiLieu": "Đơn xin đi học trở lại",
+        "top": [
+          [
+            "Đơn đăng ký học lại, học cải thiện học phần",
+            0.5304
+          ],
+          [
+            "Đơn đăng ký học lại, học cải thiện học phần",
+            0.3983
+          ],
+          [
+            "Đơn đăng ký học lại, học cải thiện học phần",
+            0.3734
+          ]
         ],
-        [
-          "Đơn đề nghị miễn, giảm học phí",
-          0.8415
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 10,
-      "cauHoi": "Em muốn chuyển ngành đào tạo thì thủ tục ra sao?",
-      "taiLieu": "Đơn xin chuyển ngành đào tạo",
-      "top": [
-        [
-          "Đơn xin chuyển trường",
-          0.85
+        "haiTop3": false
+      },
+      {
+        "stt": 19,
+        "cauHoi": "Được cử đi học trong nước thì cần đơn gì?",
+        "taiLieu": "Đơn xin đi học trong nước",
+        "top": [
+          [
+            "Đơn xin đi học trong nước",
+            1
+          ],
+          [
+            "Quy trình đào tạo, bồi dưỡng, tập huấn, hội nghị, hội thảo",
+            0.844
+          ],
+          [
+            "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
+            0.6231
+          ]
         ],
-        [
-          "Đơn xin chuyển trường (bản 2)",
-          0.8328
+        "haiTop3": true
+      },
+      {
+        "stt": 20,
+        "cauHoi": "Em tự tìm được nơi thực tập, xin đơn thực tập kiểu gì?",
+        "taiLieu": "Đơn xin đi thực tập, thực tập trải nghiệm (tự liên hệ cơ sở)",
+        "top": [
+          [
+            "Đơn xin đi thực tập, thực tập trải nghiệm",
+            0.526
+          ],
+          [
+            "Đơn xin đi thực tập, thực tập trải nghiệm (tự liên hệ cơ sở)",
+            0.2767
+          ],
+          [
+            "Đơn xin đi thực tập, thực tập trải nghiệm",
+            0.2767
+          ]
         ],
-        [
-          "Đơn xin chuyển chuyên ngành đào tạo",
-          0.7834
-        ]
-      ],
-      "haiTop3": false
-    },
-    {
-      "stt": 11,
-      "cauHoi": "Chuyển khoa (đổi chuyên ngành đào tạo) làm sao?",
-      "taiLieu": "Đơn xin chuyển chuyên ngành đào tạo",
-      "top": [
-        [
-          "Đơn xin chuyển chuyên ngành đào tạo",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 21,
+        "cauHoi": "Trường xác nhận em đang là sinh viên công tác thế nào?",
+        "taiLieu": "Đơn xin xác nhận công tác tại Trường Đại học Thái Bình",
+        "top": [
+          [
+            "Đơn đề nghị xác nhận thông tin văn bằng",
+            0.7652
+          ],
+          [
+            "Đơn xin chuyển trường",
+            0.7652
+          ],
+          [
+            "Đơn xin xác nhận công tác tại Trường Đại học Thái Bình",
+            0.7588
+          ]
         ],
-        [
-          "Đơn xin chuyển ngành đào tạo",
-          0.8425
+        "haiTop3": true
+      },
+      {
+        "stt": 22,
+        "cauHoi": "Xác nhận thông tin văn bằng đã tốt nghiệp ở đâu?",
+        "taiLieu": "Đơn đề nghị xác nhận thông tin văn bằng",
+        "top": [
+          [
+            "Đơn đề nghị xác nhận thông tin văn bằng",
+            1
+          ],
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
+            0.6504
+          ],
+          [
+            "Đơn đề nghị xét tốt nghiệp",
+            0.5828
+          ]
         ],
-        [
-          "Đơn xin chuyển lớp",
-          0.7931
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 12,
-      "cauHoi": "Chuyển chính quy sang liên thông, tức là chuyển hình thức đào tạo, làm sao?",
-      "taiLieu": "Đơn xin chuyển hình thức đào tạo",
-      "top": [
-        [
-          "Đơn xin chuyển hình thức đào tạo",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 23,
+        "cauHoi": "Bảo hiểm lao động nghỉ ốm thai sản nộp đơn gì?",
+        "taiLieu": "Đơn xin nghỉ ốm, thai sản",
+        "top": [
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.8535
+          ],
+          [
+            "Đơn xin nghỉ ốm, thai sản",
+            0.8535
+          ],
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.8535
+          ]
         ],
-        [
-          "Quy trình giải quyết cho thôi việc theo nguyện vọng cá nhân",
-          0.6961
+        "haiTop3": true
+      },
+      {
+        "stt": 24,
+        "cauHoi": "Xin nghỉ phép ăn lương thì làm sao?",
+        "taiLieu": "Đơn xin nghỉ phép",
+        "top": [
+          [
+            "Quy trình nghỉ phép",
+            0.7153
+          ],
+          [
+            "Đơn xin nghỉ phép (bản 2)",
+            0.5883
+          ],
+          [
+            "Quy trình nghỉ phép",
+            0.549
+          ]
         ],
-        [
-          "Quy trình điều chỉnh phụ cấp ưu đãi đối với nhà giáo",
-          0.6389
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 13,
-      "cauHoi": "Em muốn học ở cơ sở khác, nộp đơn chuyển cơ sở đào tạo kiểu gì?",
-      "taiLieu": "Đơn xin chuyển cơ sở đào tạo",
-      "top": [
-        [
-          "Đơn xin chuyển cơ sở đào tạo",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 25,
+        "cauHoi": "Sinh xong xin nghỉ dưỡng sức như thế nào?",
+        "taiLieu": "Đơn xin nghỉ dưỡng sức sau sinh",
+        "top": [
+          [
+            "Đơn xin nghỉ dưỡng sức sau sinh",
+            0.5321
+          ],
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.5321
+          ],
+          [
+            "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
+            0.5321
+          ]
         ],
-        [
-          "Đơn xin chuyển ngành đào tạo",
-          0.7802
+        "haiTop3": true
+      },
+      {
+        "stt": 26,
+        "cauHoi": "Đi hội nghị tập huấn do trường cử thì cần đơn gì?",
+        "taiLieu": "Đơn xin đi công tác, hội nghị, tập huấn",
+        "top": [
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
+            0.7441
+          ],
+          [
+            "Đơn xin đi công tác, hội nghị, tập huấn",
+            0.7441
+          ],
+          [
+            "Quy trình đào tạo, bồi dưỡng, tập huấn, hội nghị, hội thảo",
+            0.7441
+          ]
         ],
-        [
-          "Đơn đề nghị xét tốt nghiệp",
-          0.6917
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 14,
-      "cauHoi": "Xin chuyển lớp vì hợp thời khóa biểu khác?",
-      "taiLieu": "Đơn xin chuyển lớp",
-      "top": [
-        [
-          "Đơn đề nghị hưởng phụ cấp đứng lớp cho giảng viên",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 27,
+        "cauHoi": "Xin đi nước ngoài thăm thân du lịch thì nộp mẫu nào?",
+        "taiLieu": "Đơn xin đi du lịch, thăm thân nước ngoài",
+        "top": [
+          [
+            "Đơn xin đi du lịch, thăm thân nước ngoài",
+            0.765
+          ],
+          [
+            "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
+            0.7148
+          ],
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
+            0.7148
+          ]
         ],
-        [
-          "Đơn xin chuyển ngành đào tạo",
-          0.8131
+        "haiTop3": true
+      },
+      {
+        "stt": 28,
+        "cauHoi": "Một cửa trường giải quyết những thủ tục nào?",
+        "taiLieu": "Danh mục thủ tục giải quyết tại Bộ phận Một cửa",
+        "top": [
+          [
+            "Danh mục thủ tục giải quyết tại Bộ phận Một cửa (bản 2)",
+            0.6538
+          ],
+          [
+            "Danh mục thủ tục giải quyết tại Bộ phận Một cửa",
+            0.6538
+          ],
+          [
+            "Quy trình giải quyết cho thôi việc theo nguyện vọng cá nhân",
+            0.6538
+          ]
         ],
-        [
-          "Đơn xin chuyển lớp",
-          0.8066
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 15,
-      "cauHoi": "Học song song hai chương trình cùng lúc được phép không?",
-      "taiLieu": "Đơn đăng ký học cùng lúc hai chương trình",
-      "top": [
-        [
-          "Đơn đăng ký học cùng lúc hai chương trình",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 29,
+        "cauHoi": "Bộ phận hỗ trợ một cửa là gì, giúp được gì cho sinh viên?",
+        "taiLieu": "Giới thiệu hệ thống hỗ trợ Bộ phận Một cửa",
+        "top": [
+          [
+            "Đơn xin trở lại công tác",
+            0.8247
+          ],
+          [
+            "Đơn xin trở lại công tác (bản 2)",
+            0.8247
+          ],
+          [
+            "Giới thiệu hệ thống hỗ trợ Bộ phận Một cửa",
+            0.7936
+          ]
         ],
-        [
-          "Đơn đăng ký học cùng lúc hai chương trình",
-          0.4667
+        "haiTop3": true
+      },
+      {
+        "stt": 30,
+        "cauHoi": "Chuyển sang học trường khác thì thủ tục ra sao?",
+        "taiLieu": "Đơn xin chuyển trường",
+        "top": [
+          [
+            "Quy trình giải quyết cho thôi việc theo nguyện vọng cá nhân",
+            0.9303
+          ],
+          [
+            "Quy trình xét, công nhận và đề nghị các danh hiệu thi đua - khen thưởng",
+            0.7671
+          ],
+          [
+            "Quy trình nghỉ phép",
+            0.6975
+          ]
         ],
-        [
-          "Báo cáo kết quả thử việc",
-          0.3168
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 16,
-      "cauHoi": "Vì ốm em cần xin tạm nghỉ học thì làm gì?",
-      "taiLieu": "Đơn xin nghỉ học tạm thời",
-      "top": [
-        [
-          "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
-          0.85
+        "haiTop3": false
+      }
+    ]
+  },
+  "tuNhien": {
+    "soCau": 30,
+    "dungTop3": 21,
+    "tyLe": 0.7,
+    "mucTieu": 0.7,
+    "dat": true,
+    "chiTiet": [
+      {
+        "stt": 1,
+        "cauHoi": "em bi benh can bao luu ket qua hoc tap trong thoi gian thi lam gi",
+        "taiLieu": "Đơn xin nghỉ học tạm thời",
+        "top": [
+          [
+            "Quy trình đào tạo, bồi dưỡng, tập huấn, hội nghị, hội thảo",
+            0.6266
+          ],
+          [
+            "Đơn xin nghỉ học tạm thời",
+            0.5935
+          ],
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.5794
+          ]
         ],
-        [
-          "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
-          0.7666
+        "haiTop3": true
+      },
+      {
+        "stt": 2,
+        "cauHoi": "em lam mat bang diem roi, dung don nao de nhan lai",
+        "taiLieu": "Đơn xin cấp lại bảng điểm",
+        "top": [
+          [
+            "Đơn xin cấp lại bảng điểm",
+            0.9481
+          ],
+          [
+            "Đơn xin cấp lại bảng điểm",
+            0.6361
+          ],
+          [
+            "Đơn xin cấp bảng điểm",
+            0.6361
+          ]
         ],
-        [
-          "Đơn xin nghỉ học tạm thời",
-          0.7357
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 17,
-      "cauHoi": "Em muốn thôi học, thủ tục hồ sơ ra sao?",
-      "taiLieu": "Đơn xin thôi học",
-      "top": [
-        [
-          "Thủ tục hành chính và hồ sơ yêu cầu - Văn phòng",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 3,
+        "cauHoi": "em co nguyen vong tiep tuc hoc sang truong moi thi thu tu nhu the nao",
+        "taiLieu": "Đơn xin chuyển trường",
+        "top": [
+          [
+            "Đơn xin chuyển trường (bản 2)",
+            0.7166
+          ],
+          [
+            "Đơn xin chuyển trường",
+            0.7166
+          ],
+          [
+            "Quy trình giải quyết cho thôi việc theo nguyện vọng cá nhân",
+            0.5243
+          ]
         ],
-        [
-          "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Khoa học Công nghệ và HTPT",
-          0.8166
+        "haiTop3": true
+      },
+      {
+        "stt": 4,
+        "cauHoi": "em tu tim duoc noi thuc tap, can nho truong giay gi de dang ky",
+        "taiLieu": "Đơn xin đi thực tập, thực tập trải nghiệm (tự liên hệ cơ sở)",
+        "top": [
+          [
+            "Đơn xin đi thực tập, thực tập trải nghiệm",
+            0.6844
+          ],
+          [
+            "Đơn xin đi thực tập, thực tập trải nghiệm (tự liên hệ cơ sở)",
+            0.6329
+          ],
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Văn phòng",
+            0.5041
+          ]
         ],
-        [
-          "Quy trình nâng bậc lương trước thời hạn",
-          0.755
-        ]
-      ],
-      "haiTop3": false
-    },
-    {
-      "stt": 18,
-      "cauHoi": "Nghỉ học tạm thời xong muốn đi học trở lại thì nộp đơn gì?",
-      "taiLieu": "Đơn xin đi học trở lại",
-      "top": [
-        [
-          "Đơn xin đi học trở lại",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 5,
+        "cauHoi": "duoc khoa bo xep thuc tap tap trung thi dang ky don giay nao",
+        "taiLieu": "Đơn xin đi thực tập, thực tập trải nghiệm",
+        "top": [
+          [
+            "Quy trình tuyển dụng, tiếp nhận viên chức",
+            0.755
+          ],
+          [
+            "Đơn xin chuyển trường (bản 2)",
+            0.7029
+          ],
+          [
+            "Đơn xin chuyển trường",
+            0.7029
+          ]
         ],
-        [
-          "Đơn xin trở lại công tác",
-          0.7006
+        "haiTop3": false
+      },
+      {
+        "stt": 6,
+        "cauHoi": "nha em ho canh kho khan thi dang ky giam hoc phi o dau",
+        "taiLieu": "Đơn đề nghị miễn, giảm học phí",
+        "top": [
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Kế hoạch Tài chính",
+            0.4039
+          ],
+          [
+            "Bản cam kết thực hiện nghĩa vụ của người được cử đi đào tạo",
+            0.2839
+          ],
+          [
+            "Đơn đề nghị miễn, giảm học phí",
+            0.2704
+          ]
         ],
-        [
-          "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
-          0.6545
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 19,
-      "cauHoi": "Được cử đi học trong nước thì cần đơn gì?",
-      "taiLieu": "Đơn xin đi học trong nước",
-      "top": [
-        [
-          "Đơn xin đi học trong nước",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 7,
+        "cauHoi": "can lam gi de xin nghi om nhan bao hiem xa hoi cho nguoi lao dong",
+        "taiLieu": "Đơn xin nghỉ ốm, thai sản",
+        "top": [
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.9562
+          ],
+          [
+            "Đơn xin nghỉ ốm, thai sản",
+            0.9562
+          ],
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.9485
+          ]
         ],
-        [
-          "Quy trình đào tạo, bồi dưỡng, tập huấn, hội nghị, hội thảo",
-          0.6929
+        "haiTop3": true
+      },
+      {
+        "stt": 8,
+        "cauHoi": "da hoc du mon bat buoc, muon lan xet tot nghiep thi don gi",
+        "taiLieu": "Đơn đề nghị xét tốt nghiệp",
+        "top": [
+          [
+            "Quy trình tuyển dụng, tiếp nhận viên chức",
+            0.6029
+          ],
+          [
+            "Quy trình tuyển dụng lao động hợp đồng",
+            0.4756
+          ],
+          [
+            "Đơn đề nghị xét tốt nghiệp",
+            0.3938
+          ]
         ],
-        [
-          "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
-          0.6392
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 20,
-      "cauHoi": "Em tự tìm được nơi thực tập, xin đơn thực tập kiểu gì?",
-      "taiLieu": "Đơn xin đi thực tập, thực tập trải nghiệm (tự liên hệ cơ sở)",
-      "top": [
-        [
-          "Đơn xin đi thực tập, thực tập trải nghiệm",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 9,
+        "cauHoi": "da qua hai nam sau khi bo hoc moi muon tot nghiep thi lam don nao",
+        "taiLieu": "Đơn đề nghị xét tốt nghiệp (quá hạn tốt nghiệp)",
+        "top": [
+          [
+            "Bản cam kết thực hiện nghĩa vụ của người được cử đi đào tạo",
+            0.6682
+          ],
+          [
+            "Đơn xin cấp chứng nhận tốt nghiệp tạm thời",
+            0.4704
+          ],
+          [
+            "Đơn đề nghị xét tốt nghiệp (quá hạn tốt nghiệp)",
+            0.405
+          ]
         ],
-        [
-          "Đơn xin đi thực tập, thực tập trải nghiệm (tự liên hệ cơ sở)",
-          0.7722
+        "haiTop3": true
+      },
+      {
+        "stt": 10,
+        "cauHoi": "em thao ba lan o mot mon, muon dang ky thi lai mon kia thi giay gi",
+        "taiLieu": "Đơn đăng ký học lại, học cải thiện học phần",
+        "top": [
+          [
+            "Đơn đăng ký học lại, học cải thiện học phần",
+            0.4102
+          ],
+          [
+            "Đơn đăng ký học lại, học cải thiện học phần",
+            0.4102
+          ],
+          [
+            "Đơn đăng ký học lại, học cải thiện học phần",
+            0.4102
+          ]
         ],
-        [
-          "Đơn xin đi thực tập, thực tập trải nghiệm",
-          0.708
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 21,
-      "cauHoi": "Trường xác nhận em đang là sinh viên công tác thế nào?",
-      "taiLieu": "Đơn xin xác nhận công tác tại Trường Đại học Thái Bình",
-      "top": [
-        [
-          "Đơn xin xác nhận công tác tại Trường Đại học Thái Bình",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 11,
+        "cauHoi": "em muon theo chuong trinh khac trong khi van dang hoc chinh quy thi don nao",
+        "taiLieu": "Đơn đăng ký học cùng lúc hai chương trình",
+        "top": [
+          [
+            "Đơn xin cấp chứng nhận hoàn thành chương trình đào tạo",
+            0.4713
+          ],
+          [
+            "Đơn đăng ký học cùng lúc hai chương trình",
+            0.4395
+          ],
+          [
+            "Đơn xin cấp chứng nhận hoàn thành chương trình đào tạo",
+            0.4395
+          ]
         ],
-        [
-          "Đơn đề nghị xác nhận thông tin văn bằng",
-          0.7982
+        "haiTop3": true
+      },
+      {
+        "stt": 12,
+        "cauHoi": "truong cu di hoc chuyen mon trong nuoc thi nho gi",
+        "taiLieu": "Đơn xin đi học trong nước",
+        "top": [
+          [
+            "Đơn xin đi học trong nước",
+            1
+          ],
+          [
+            "Đơn xin chuyển trường (bản 2)",
+            0.7362
+          ],
+          [
+            "Đơn xin chuyển trường",
+            0.7362
+          ]
         ],
-        [
-          "Đơn xin chuyển trường",
-          0.714
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 22,
-      "cauHoi": "Xác nhận thông tin văn bằng đã tốt nghiệp ở đâu?",
-      "taiLieu": "Đơn đề nghị xác nhận thông tin văn bằng",
-      "top": [
-        [
-          "Đơn đề nghị xác nhận thông tin văn bằng",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 13,
+        "cauHoi": "can giay chung nhan sinh vien dang hoc cho me tham khao",
+        "taiLieu": "Đơn xin xác nhận công tác tại Trường Đại học Thái Bình",
+        "top": [
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.4899
+          ],
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.4899
+          ],
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
+            0.4447
+          ]
         ],
-        [
-          "Giới thiệu hệ thống hỗ trợ Bộ phận Một cửa",
-          0.4913
+        "haiTop3": false
+      },
+      {
+        "stt": 14,
+        "cauHoi": "can giay do truong chung minh van bang cho nha tuyen dung xem",
+        "taiLieu": "Đơn đề nghị xác nhận thông tin văn bằng",
+        "top": [
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
+            0.7657
+          ],
+          [
+            "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
+            0.7657
+          ],
+          [
+            "Đơn đề nghị xác nhận thông tin văn bằng",
+            0.5871
+          ]
         ],
-        [
-          "Đơn xin thôi học",
-          0.4776
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 23,
-      "cauHoi": "Bảo hiểm lao động nghỉ ốm thai sản nộp đơn gì?",
-      "taiLieu": "Đơn xin nghỉ ốm, thai sản",
-      "top": [
-        [
-          "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 15,
+        "cauHoi": "bang chua ve nha, can giay tam thoi de lam ho so xin viec loai nao",
+        "taiLieu": "Đơn xin cấp chứng nhận tốt nghiệp tạm thời",
+        "top": [
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
+            0.65
+          ],
+          [
+            "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
+            0.5296
+          ],
+          [
+            "Đơn xin cấp chứng nhận tốt nghiệp tạm thời",
+            0.5086
+          ]
         ],
-        [
-          "Đơn xin nghỉ ốm, thai sản",
-          0.8475
+        "haiTop3": true
+      },
+      {
+        "stt": 16,
+        "cauHoi": "hoc xong du mon, can giay chung nhan da hoc het chuong trinh thi lam gi",
+        "taiLieu": "Đơn xin cấp chứng nhận hoàn thành chương trình đào tạo",
+        "top": [
+          [
+            "Quy trình tuyển dụng lao động hợp đồng",
+            0.5899
+          ],
+          [
+            "Đơn xin cấp chứng nhận hoàn thành chương trình đào tạo",
+            0.3955
+          ],
+          [
+            "Đơn xin cấp chứng nhận hoàn thành chương trình đào tạo",
+            0.3955
+          ]
         ],
-        [
-          "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
-          0.7351
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 24,
-      "cauHoi": "Xin nghỉ phép ăn lương thì làm sao?",
-      "taiLieu": "Đơn xin nghỉ phép",
-      "top": [
-        [
-          "Đơn xin nghỉ phép (bản 2)",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 17,
+        "cauHoi": "can giay dinh kem bang tot nghiep copy cong chung vao ho so xin viec loai nao",
+        "taiLieu": "Đơn xin cấp bản sao bằng tốt nghiệp",
+        "top": [
+          [
+            "Đơn xin cấp bản sao bằng tốt nghiệp",
+            0.4636
+          ],
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
+            0.4449
+          ],
+          [
+            "Đơn xin cấp bản sao bằng tốt nghiệp",
+            0.3578
+          ]
         ],
-        [
-          "Quy trình nghỉ phép",
-          0.6842
+        "haiTop3": true
+      },
+      {
+        "stt": 18,
+        "cauHoi": "em muon chuyen khoa dao tao sang nganh khac thi nho giay gi",
+        "taiLieu": "Đơn xin chuyển chuyên ngành đào tạo",
+        "top": [
+          [
+            "Đơn xin chuyển ngành đào tạo",
+            0.7529
+          ],
+          [
+            "Đơn xin chuyển cơ sở đào tạo",
+            0.7529
+          ],
+          [
+            "Đơn xin chuyển chuyên ngành đào tạo",
+            0.5837
+          ]
         ],
-        [
-          "Quy trình nghỉ phép",
-          0.6447
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 25,
-      "cauHoi": "Sinh xong xin nghỉ dưỡng sức như thế nào?",
-      "taiLieu": "Đơn xin nghỉ dưỡng sức sau sinh",
-      "top": [
-        [
-          "Đơn xin nghỉ dưỡng sức sau sinh",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 19,
+        "cauHoi": "muon hoc sanh nua cua truong o thanh pho thi lam don gi",
+        "taiLieu": "Đơn xin chuyển cơ sở đào tạo",
+        "top": [
+          [
+            "Quy trình bổ nhiệm cán bộ quản lý thuộc diện Ban Thường vụ Tỉnh uỷ quản lý",
+            0.4802
+          ],
+          [
+            "Quy trình bổ nhiệm cán bộ quản lý thuộc diện Ban Thường vụ Tỉnh uỷ quản lý",
+            0.3258
+          ],
+          [
+            "Quy trình bổ nhiệm cán bộ quản lý thuộc diện Ban Thường vụ Tỉnh uỷ quản lý",
+            0.2645
+          ]
         ],
-        [
-          "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
-          0.7607
+        "haiTop3": false
+      },
+      {
+        "stt": 20,
+        "cauHoi": "muon sang lien thong tu chinh quy thi lam don nao",
+        "taiLieu": "Đơn xin chuyển hình thức đào tạo",
+        "top": [
+          [
+            "Quy trình xét, công nhận và đề nghị các danh hiệu thi đua - khen thưởng",
+            0.7372
+          ],
+          [
+            "Quy trình tuyển dụng, tiếp nhận viên chức",
+            0.7372
+          ],
+          [
+            "Quy trình giải quyết cho thôi việc theo nguyện vọng cá nhân",
+            0.6981
+          ]
         ],
-        [
-          "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
-          0.6775
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 26,
-      "cauHoi": "Đi hội nghị tập huấn do trường cử thì cần đơn gì?",
-      "taiLieu": "Đơn xin đi công tác, hội nghị, tập huấn",
-      "top": [
-        [
-          "Đơn xin đi công tác, hội nghị, tập huấn",
-          0.85
+        "haiTop3": false
+      },
+      {
+        "stt": 21,
+        "cauHoi": "gio hoc cua lop em khong hop, muon doi sang lop khac thi don nao",
+        "taiLieu": "Đơn xin chuyển lớp",
+        "top": [
+          [
+            "Quy trình xét, công nhận và đề nghị các danh hiệu thi đua - khen thưởng",
+            0.6612
+          ],
+          [
+            "Quy trình nâng bậc lương trước thời hạn",
+            0.6087
+          ],
+          [
+            "Quy trình điều chỉnh phụ cấp ưu đãi đối với nhà giáo",
+            0.6087
+          ]
         ],
-        [
-          "Quy trình đào tạo, bồi dưỡng, tập huấn, hội nghị, hội thảo",
-          0.8156
+        "haiTop3": false
+      },
+      {
+        "stt": 22,
+        "cauHoi": "hoc nham nganh roi, muon dao qua nganh khac thi giay gi",
+        "taiLieu": "Đơn xin chuyển ngành đào tạo",
+        "top": [
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.523
+          ],
+          [
+            "Đơn xin chuyển ngành đào tạo",
+            0.395
+          ],
+          [
+            "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
+            0.3721
+          ]
         ],
-        [
-          "Quy trình đào tạo, bồi dưỡng, tập huấn, hội nghị, hội thảo",
-          0.7819
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 27,
-      "cauHoi": "Xin đi nước ngoài thăm thân du lịch thì nộp mẫu nào?",
-      "taiLieu": "Đơn xin đi du lịch, thăm thân nước ngoài",
-      "top": [
-        [
-          "Đơn xin đi du lịch, thăm thân nước ngoài",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 23,
+        "cauHoi": "tham ja que vao nghi le, can xin giay gi truoc khi di",
+        "taiLieu": "Đơn xin đi du lịch, thăm thân nước ngoài",
+        "top": [
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
+            0.3388
+          ],
+          [
+            "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
+            0.3388
+          ],
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.2556
+          ]
         ],
-        [
-          "Các thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ (bản 2)",
-          0.6696
+        "haiTop3": false
+      },
+      {
+        "stt": 24,
+        "cauHoi": "duoc phong cong tac di hoi nghi khu vuc thi lam giay gi",
+        "taiLieu": "Đơn xin đi công tác, hội nghị, tập huấn",
+        "top": [
+          [
+            "Đơn xin chuyển trường (bản 2)",
+            0.7067
+          ],
+          [
+            "Đơn xin chuyển trường",
+            0.7067
+          ],
+          [
+            "Quy trình bổ nhiệm cán bộ quản lý thuộc thẩm quyền Hiệu trưởng",
+            0.4494
+          ]
         ],
-        [
-          "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
-          0.635
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 28,
-      "cauHoi": "Một cửa trường giải quyết những thủ tục nào?",
-      "taiLieu": "Danh mục thủ tục giải quyết tại Bộ phận Một cửa",
-      "top": [
-        [
-          "Danh mục thủ tục giải quyết tại Bộ phận Một cửa (bản 2)",
-          0.85
+        "haiTop3": false
+      },
+      {
+        "stt": 25,
+        "cauHoi": "sinh xong muon nghi them de dieu duong suc khoe thi don nao",
+        "taiLieu": "Đơn xin nghỉ dưỡng sức sau sinh",
+        "top": [
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.5251
+          ],
+          [
+            "Đơn xin nghỉ dưỡng sức sau sinh",
+            0.441
+          ],
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
+            0.3618
+          ]
         ],
-        [
-          "Danh mục thủ tục giải quyết tại Bộ phận Một cửa",
-          0.8447
+        "haiTop3": true
+      },
+      {
+        "stt": 26,
+        "cauHoi": "nhan vien xin nghi phep vi viec nha thi ho so gi em tu",
+        "taiLieu": "Đơn xin nghỉ phép",
+        "top": [
+          [
+            "Đơn xin nghỉ phép (bản 2)",
+            0.8281
+          ],
+          [
+            "Quy trình nghỉ phép",
+            0.8081
+          ],
+          [
+            "Quy trình nghỉ phép",
+            0.6736
+          ]
         ],
-        [
-          "Quy trình giải quyết cho thôi việc theo nguyện vọng cá nhân",
-          0.82
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 29,
-      "cauHoi": "Bộ phận hỗ trợ một cửa là gì, giúp được gì cho sinh viên?",
-      "taiLieu": "Giới thiệu hệ thống hỗ trợ Bộ phận Một cửa",
-      "top": [
-        [
-          "Giới thiệu hệ thống hỗ trợ Bộ phận Một cửa",
-          0.85
+        "haiTop3": true
+      },
+      {
+        "stt": 27,
+        "cauHoi": "can tra cuu bang thu tuc ho so va bieu mau tuong ung phong nhom",
+        "taiLieu": "Danh mục thủ tục giải quyết tại Bộ phận Một cửa",
+        "top": [
+          [
+            "Danh mục thủ tục giải quyết tại Bộ phận Một cửa",
+            0.9671
+          ],
+          [
+            "Giới thiệu hệ thống hỗ trợ Bộ phận Một cửa",
+            0.7335
+          ],
+          [
+            "Giới thiệu hệ thống hỗ trợ Bộ phận Một cửa",
+            0.5844
+          ]
         ],
-        [
-          "Đơn xin đi thực tập, thực tập trải nghiệm",
-          0.8422
+        "haiTop3": true
+      },
+      {
+        "stt": 28,
+        "cauHoi": "bo phan mot cua co tac dung gi voi sinh vien",
+        "taiLieu": "Giới thiệu hệ thống hỗ trợ Bộ phận Một cửa",
+        "top": [
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            1
+          ],
+          [
+            "Đơn xin trở lại công tác",
+            0.7425
+          ],
+          [
+            "Đơn xin trở lại công tác (bản 2)",
+            0.7425
+          ]
         ],
-        [
-          "Đơn xin đi học trở lại",
-          0.7393
-        ]
-      ],
-      "haiTop3": true
-    },
-    {
-      "stt": 30,
-      "cauHoi": "Chuyển sang học trường khác thì thủ tục ra sao?",
-      "taiLieu": "Đơn xin chuyển trường",
-      "top": [
-        [
-          "Quy trình giải quyết cho thôi việc theo nguyện vọng cá nhân",
-          0.85
+        "haiTop3": false
+      },
+      {
+        "stt": 29,
+        "cauHoi": "nhan vien om xin bao hiem xa hoi thi thuc hien the nao theo trinh tu",
+        "taiLieu": "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+        "top": [
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            1
+          ],
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.8296
+          ],
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.7051
+          ]
         ],
-        [
-          "Quy trình xét, công nhận và đề nghị các danh hiệu thi đua - khen thưởng",
-          0.7892
+        "haiTop3": true
+      },
+      {
+        "stt": 30,
+        "cauHoi": "khong muon hoc tiep nua thi giay gi truong cho nao",
+        "taiLieu": "Đơn xin thôi học",
+        "top": [
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.8675
+          ],
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.6468
+          ],
+          [
+            "Quy trình nghỉ ốm đau, thai sản, dưỡng sức sau sinh",
+            0.6468
+          ]
         ],
-        [
-          "Quy trình nghỉ phép",
-          0.7726
-        ]
-      ],
-      "haiTop3": false
-    }
-  ]
+        "haiTop3": false
+      }
+    ]
+  },
+  "ngoaiPhamVi": {
+    "soCau": 20,
+    "tuChoiDung": 19,
+    "tyLe": 0.95,
+    "mucTieu": 0.85,
+    "dat": true,
+    "chiTiet": [
+      {
+        "stt": 1,
+        "cauHoi": "hoc phi ky moi cua em la 18560000 dong dung khong?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 2,
+        "cauHoi": "diem mon toan ki thi lan truoc cua em la bao nhiu?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 3,
+        "cauHoi": "hom nay thoi tiet the nao, co mua khong?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 4,
+        "cauHoi": "giup em sua loi ham python tinh tong day so voi!",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 5,
+        "cauHoi": "lam sao de cai dat lai win 10 len may cu?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 6,
+        "cauHoi": "cho em sdt rieng cua giao vien day toan lop em",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 7,
+        "cauHoi": "hom nay ai dang lam hieu truong truong minh the?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 8,
+        "cauHoi": "chao bot nhe, hom nay bot vui khong?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 9,
+        "cauHoi": "cam on bot da ho tro nha!",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 10,
+        "cauHoi": "cuoi tuan nay nen di dau choi thi tai?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 11,
+        "cauHoi": "wifi nha em cham qua, cach cai thi gi?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 12,
+        "cauHoi": "em muon lam cv de xin viec ben ngoai thi lam sao?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 13,
+        "cauHoi": "mon bun cha ca ngon thi nau the nao?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 14,
+        "cauHoi": "nha tro gan truong gia chi bao nhieu mot thang?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 15,
+        "cauHoi": "lich thi dau bong da ngoai hang anh toi nay la may gio?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 16,
+        "cauHoi": "bai hat moi cua ca si ho ten ten gi vay?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 17,
+        "cauHoi": "em muon mua laptop du 15 trieu, nen mua may nao?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 18,
+        "cauHoi": "bi cam mun nen an gi va uong thuoc gi?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 19,
+        "cauHoi": "tre 3 tuoi chua biet noi thi lam sao day duoc?",
+        "top": [],
+        "daTuChoi": true
+      },
+      {
+        "stt": 20,
+        "cauHoi": "tra cuu diem thi tot nghiep cua ban em nam ngoai giup em",
+        "top": [
+          [
+            "Bản tự đánh giá kết quả công việc",
+            0.7801
+          ],
+          [
+            "Thủ tục hành chính và hồ sơ yêu cầu - Phòng Tổ chức cán bộ",
+            0.6324
+          ]
+        ],
+        "daTuChoi": false
+      }
+    ]
+  }
 }

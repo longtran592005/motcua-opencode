@@ -945,6 +945,10 @@ model KnowledgeChunk {
   heading    String?
   content    String
   embedding  Json?
+  /// Tên mô hình đã tạo embedding này (đổi mô hình → phải nạp lại --force).
+  moHinhEmbedding  String? @map("mo_hinh_embedding")
+  /// Số chiều của vector embedding (null = chưa có vector hoặc vector cũ).
+  soChieuEmbedding Int?    @map("so_chieu_embedding")
   createdAt  DateTime @default(now()) @map("created_at")
 
   document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)

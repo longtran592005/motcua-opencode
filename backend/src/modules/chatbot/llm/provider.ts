@@ -50,8 +50,9 @@ export class LlmError extends Error {
 export class GeminiProvider implements LLMProvider {
   readonly name = 'gemini'
   readonly model: string
+  /** Tên mô hình embedding đang dùng (để ingest ghi lại trên chunk + kiểm lúc khởi động). */
+  readonly embedModel: string
   private readonly apiKey: string | undefined
-  private readonly embedModel: string
 
   constructor(opts?: { apiKey?: string; model?: string; embedModel?: string }) {
     this.apiKey = opts?.apiKey ?? env.GEMINI_API_KEY
@@ -194,15 +195,24 @@ export function getLlmProvider(): LLMProvider {
   return new GeminiProvider()
 }
 
-/** Kiểm tra tên mô hình lúc khởi động — không làm sập ứng dụng. */
+/** Kiểm tra tên mô hình (chat + embedding) lúc khởi động — không làm sập ứng dụng. */
 export async function warnIfModelMissing(provider: LLMProvider): Promise<void> {
   const p = provider as GeminiProvider
   if (p.name !== 'gemini' || !p.available()) return
   try {
     const names = await p.listModels()
-    if (names.length && !names.includes(p.model)) {
+    if (!names.length) return
+    const check = (label: string, model: string): boolean => {
+      if (names.includes(model)) return true
+      process.stderr.write(`[chatbot] CẢNH BÁO: ${label} "${model}" không có trong danh sách mô hình Gemini.\n`)
+      return false
+    }
+    check('mô hình sinh văn bản', p.model)
+    // Mô hình embedding sai → chatbot tự suy giảm chế độ chỉ-từ-khóa (runtime
+    // bỏ qua lỗi embed từng câu, không sập), và ingest sẽ không ghi vector mới.
+    if (!check('mô hình embedding', p.embedModel)) {
       process.stderr.write(
-        `[chatbot] CẢNH BÁO: mô hình "${p.model}" không có trong danh sách mô hình Gemini.\n`,
+        `[chatbot] CẢNH BÁO: khích hoạt suy giảm — không tạo embedding truy vấn, truy xuất chạy thuần từ khóa (GEMINI_EMBED_MODEL=${p.embedModel}).\n`,
       )
     }
   } catch (e) {

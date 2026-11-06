@@ -104,10 +104,15 @@ DELETE FROM _prisma_migrations WHERE migration_name = '20261104010000_chatbot_kn
 ## 2. Khoá Gemini (KHÔNG RÒ KHOÁ)
 
 - Khoá **chỉ** đặt trong `backend/.env`, biến `GEMINI_API_KEY=…` (+ tùy chọn
-  `GEMINI_MODEL=gemini-2.5-flash`, `GEMINI_EMBED_MODEL=text-embedding-004`).
+  `GEMINI_MODEL=gemini-2.5-flash`,
+  `GEMINI_EMBED_MODEL=gemini-embedding-001` — mặc định, xem F2 `docs/QUYET_DINH.md`).
 - KHÔNG đặt khoá vào frontend, không commit, không in ra log.
 - Không có khoá: chatbot vẫn chạy ở **chế độ chỉ-tìm-kiếm SEARCH_ONLY**
   (trả danh sách tài liệu + nút chuyển cán bộ) — lỗi mô hình không làm chết tính năng.
+- Có khoá: lúc khởi động backend tự kiểm tra cả 2 mô hình bằng cách liệt kê
+  danh sách mô hình Gemini (`warnIfModelMissing`); sai tên nào cũng chỉ
+  **log cảnh báo rõ** và **suy giảm an toàn** — Với mô hình embedding sai,
+  runtime bỏ hẳn vector truy vấn, truy xuất chạy thuần từ khóa (không sập).
 
 ```powershell
 Add-Content backend\.env "GEMINI_API_KEY=<khoá của bạn>"
@@ -121,6 +126,13 @@ Set-Location backend
 $env:DATABASE_URL='postgresql://motcua:<mật khẩu>@localhost:5434/motcua_test?schema=public'
 npm run chatbot:ingest     # 67 tài liệu mới/cập nhật, 2 tệp .xls không đọc được (bỏ qua)
 ```
+
+Mỗi đoạn tri thức có embedding được ghi kèm **tên mô hình** + **số chiều**
+(`mo_hinh_embedding`, `so_chieu_embedding` trong bảng `knowledge_chunks`).
+**Đổi `GEMINI_EMBED_MODEL` ⇒ phải nạp lại** — script phát hiện đoạn có vector
+theo mô hình khác/không rõ tên và báo:
+`embedding cũ, hãy chạy chatbot:ingest --force` (script `--force` re-embed
+toàn bộ, tự chặn khi không có khoá để không xoá mất vector cũ).
 
 Script `chatbot:ingest` an toàn để chạy lại (bỏ qua tài liệu không đổi theo `content_hash`).
 

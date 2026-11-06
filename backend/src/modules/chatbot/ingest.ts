@@ -193,7 +193,12 @@ export function matchFormsToRequestTypes(
     )
     let best: { ma: string; ten: string; score: number; chungThuc: boolean } | null = null
     for (const rt of requestTypes) {
-      const rtTokens = normalizeText(rt.ten).split(/[^a-z0-9]+/).filter((t) => t.length > 1)
+      // Lột tiền tố như với tên biểu mẫu — để khớp trùng-tên-đích-thực (1.0)
+      // đạt tin cậy cao, và nạp lại tái lập đúng các cặp đã chọn.
+      const rtTokens = normalizeText(rt.ten)
+        .replace(/^(don|don de nghi|don xin|giay|giay de nghi|giay xin)\b/g, '')
+        .split(/[^a-z0-9]+/)
+        .filter((t) => t.length > 1)
       let common = 0
       for (const t of rtTokens) if (ft.has(t)) common += 1
       const score = rtTokens.length ? common / Math.max(ft.size, rtTokens.length) : 0
@@ -233,6 +238,11 @@ export function writeFormMap(entries: FormMapEntry[], file = path.resolve(PUBLIC
   }
   const byName = new Map(old.filter((o) => o.xacNhanBoi || (o.doTinCay === 'trung-binh' && o.maLoaiDon)).map((o) => [o.tenBieuMau, o]))
   const merged = entries.map((e) => byName.get(e.tenBieuMau) ?? e)
+  // Thứ tự ổn định: cặp khớp (maLoaiDon) lên đầu, còn lại theo tên biểu mẫu
+  // (vi) — truy vấn thư viện không ORDER BY nên không sắp thì mỗi lần nạp file
+  // bị "xáo" lại dù nội dung không đổi.
+  const khac = (e: FormMapEntry) => (e.maLoaiDon ? 0 : 1)
+  merged.sort((a, b) => khac(a) - khac(b) || a.tenBieuMau.localeCompare(b.tenBieuMau, 'vi'))
   fs.writeFileSync(file, JSON.stringify(merged, null, 2), 'utf8')
 }
 
@@ -257,6 +267,13 @@ function documentCode(libId: string | null, title: string): string {
 
 export interface Embedder {
   embed(texts: string[]): Promise<number[][]>
+}
+
+/** Tên mô hình embedding của một embedder (GeminiProvider khai báo embedModel). */
+function embedModelOf(embedder: Embedder | null): string | null {
+  if (!embedder) return null
+  const m = (embedder as { embedModel?: unknown }).embedModel
+  return typeof m === 'string' && m.length ? m : null
 }
 
 /** Tạo embedding theo lô nhỏ, thử lại 1 lần khi lỗi (429). */
@@ -315,7 +332,7 @@ export async function ingestDocumentContent(opts: {
         page: c.page ?? opts.pages ?? null,
         heading: c.heading,
         content: c.content,
-        ...(vectors[i] ? { embedding: vectors[i] } : {}),
+        ...(vectors[i] ? { embedding: vectors[i], moHinhEmbedding: embedModelOf(opts.embedder ?? null), soChieuEmbedding: Array.isArray(vectors[i]) ? vectors[i]!.length : null } as const : {}),
       })),
     }),
     prisma.knowledgeDocument.update({
@@ -328,17 +345,24 @@ export async function ingestDocumentContent(opts: {
 
 export interface IngestReport extends IngestProgress {
   formMap: FormMapEntry[]
+  /** Mô hình embedding của lần nạp này (null = chế độ từ-khóa). */
+  moHinhEmbedding: string | null
+  /** Số đoạn có embedding cũ (khác mô hình hiện tại hoặc không rõ tên) — cần --force. */
+  embeddingLao: number
 }
 
 /**
  * Nạp toàn bộ tài liệu thư viện (77 biểu mẫu) + dựng form-map.
- * Chỉ xử lý lại tài liệu khi content_hash thay đổi.
+ * Chỉ xử lý lại tài liệu khi content_hash thay đổi; opts.force xử lý lại TẤT CẢ
+ * (dùng khi đổi mô hình embedding — embedding chỉ ghi lại khi chạy với khóa).
  */
 export async function ingestLibraryDocuments(opts: {
   embedder?: Embedder | null
+  force?: boolean
   onProgress?: (p: IngestProgress) => void
 } = {}): Promise<IngestReport> {
   const progress: IngestProgress = { documents: 0, chunks: 0, unreadable: [], skipped: 0, embedded: 0, embedErrors: 0 }
+  const moHinh = embedModelOf(opts.embedder ?? null)
   const libs = await prisma.libraryDocument.findMany({ where: { deletedAt: null } })
   const map = new Map(libs.map((l) => [l.url, l]))
 
@@ -368,7 +392,7 @@ export async function ingestLibraryDocuments(opts: {
     }
 
     const existing = await prisma.knowledgeDocument.findUnique({ where: { ma: docCode } })
-    if (existing && existing.contentHash === hash && existing.status === 'READY' && !existing.deletedAt) {
+    if (existing && existing.contentHash === hash && existing.status === 'READY' && !existing.deletedAt && !opts.force) {
       progress.skipped += 1
       continue
     }
@@ -411,7 +435,7 @@ export async function ingestLibraryDocuments(opts: {
           page: pages ?? null,
           heading: null,
           content: c.content,
-          ...(vectors[i] ? { embedding: vectors[i] } : {}),
+          ...(vectors[i] ? { embedding: vectors[i], moHinhEmbedding: moHinh, soChieuEmbedding: Array.isArray(vectors[i]) ? vectors[i]!.length : null } as const : {}),
         })),
       }),
       prisma.knowledgeDocument.update({
@@ -432,5 +456,18 @@ export async function ingestLibraryDocuments(opts: {
   )
   writeFormMap(entries)
 
-  return { ...progress, formMap: entries }
+  // 3) Phát hiện embedding cũ: đoạn có vector nhưng mô hình khác mô hình hiện
+  //    tại (hoặc không rõ tên — nạp trước khi có siêu dữ liệu).
+  let embeddingLao = 0
+  if (moHinh) {
+    const r = (await prisma.$queryRawUnsafe(
+      `SELECT count(*)::int AS c FROM knowledge_chunks k
+       WHERE k.so_chieu_embedding IS NOT NULL
+         AND (k.mo_hinh_embedding IS NULL OR k.mo_hinh_embedding <> $1)`,
+      moHinh,
+    )) as Array<{ c: number }>
+    embeddingLao = r[0]?.c ?? 0
+  }
+
+  return { ...progress, formMap: entries, moHinhEmbedding: moHinh, embeddingLao }
 }

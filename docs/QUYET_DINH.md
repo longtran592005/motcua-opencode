@@ -313,13 +313,26 @@ trong commit đó; ghi vào mục "Lỗi thật phát hiện" của báo cáo v�
   Language API, khoá **chỉ** đọc từ `GEMINI_API_KEY` trong `backend/.env`) và `FakeProvider`
   (không mạng, dùng cho kiểm thử). Thiếu khoá / lỗi / 429 →caller suy giảm **SEARCH_ONLY**,
   không để lỗi trần trụi ra giao diện. Không có `VITE_GEMINI_API_KEY` — khoá không bao giờ ra frontend.
+- Mô hình (cập nhật Việc 5): sinh văn bản `GEMINI_MODEL=gemini-2.5-flash`; embedding
+  **mặc định `GEMINI_EMBED_MODEL=gemini-embedding-001`**. Lúc khởi động có khoá: kiểm
+  tra cả 2 tên mô hình bằng cách liệt kê mô hình (`warnIfModelMissing`) — sai tên chỉ
+  **log cảnh báo + suy giảm an toàn** (không embedding, không sập). Mỗi chunk có vector
+  ghi kèm **tên mô hình + số chiều** (`knowledge_chunks.mo_hinh_embedding`,
+  `so_chieu_embedding`); đổi mô hình ⇒ script nạp phát hiện embedding cũ và bắt
+  buộc `chatbot:ingest --force` (tự chặn khi không có khoá). Vector hiện có trên
+  CSDL TEST là vector giả 32 chiều từ `FakeProvider` (seed kiểm thử) — phải nạp lại
+  bằng khoá thật trước khi đám product.
 
 ### F3 (Q3). Truy xuất — không pgvector
 
 - Quyết định: **KHÔNG dùng pgvector**. Embedding lưu `jsonb` (`knowledge_chunks.embedding`);
-  tìm kiếm lai BM25 tự cài (score chuẩn hoá trong [0,1]) + cosine vector, hợp ứng viên bằng
-  RRF (chọn top từng phía), xếp hạng cuối theo **điểm tổng hợp** (BM25×0.85 khi chỉ từ-khóa;
-  0.6×kw + 0.4×vec khi có cả hai).
+  tìm kiếm lai BM25 tự cài + cosine vector, hợp ứng viên bằng
+  RRF (chọn top từng phía), xếp hạng cuối theo **điểm tổng hợp** trong [0,1]:
+  điểm từ-khóa là **độ phủ từ khóa hữu ích có trọng số IDF** (tuyệt đối, không
+  chuẩn hóa theo max; F3 cập nhật Việc 3, thay công thức cũ BM25×0.85);
+  0.6×phủ-từ-khóa + 0.4×cosine khi có cả hai; ngưỡng `CHAT_MIN_SCORE=0.6`
+  so với điểm tuyệt đối này nên câu ngoài phạm vi không đạt ngưỡng chỉ nhờ
+  xếp đầu.
 - Chỉ mục truy xuất nạp **trong bộ nhớ** từ CSDL (`reloadKnowledgeIndex()`), nạp lại khi
   thêm/xóa/bật-tắt tài liệu; tự nạp khi lần gọi đầu.
 - Chống bịa: câu trả lời chỉ dựa trên `<<NGUỒN>>` + `<<KẾT QUẢ CÔNG CỤ>>`; khi `can_answer=false`
